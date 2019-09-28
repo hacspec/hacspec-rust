@@ -20,7 +20,7 @@ pub fn to_u32l(x: &[u8]) -> u32 {
     (x[3] as u32) << 24 | (x[2] as u32) << 16 | (x[1] as u32) << 8 | (x[0] as u32)
 }
 
-pub fn from_u32l(x: &u32) -> (u8, u8, u8, u8) {
+pub fn from_u32l(x: u32) -> (u8, u8, u8, u8) {
     (
         ((x & 0xFF000000) >> 24) as u8,
         ((x & 0xFF0000) >> 16) as u8,
