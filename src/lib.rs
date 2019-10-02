@@ -4,12 +4,12 @@
 extern crate rand;
 
 use std::convert::AsMut;
-use std::ops::{Index, Range};
+use std::ops::{Index, IndexMut, Range, RangeFull};
 
 #[macro_export]
 macro_rules! hacspec_imports {
     () => {
-        use std::ops::{Index, Range};
+        use std::ops::{Index, IndexMut, Range, RangeFull};
     };
 }
 
@@ -46,6 +46,24 @@ pub struct Bytes {
 }
 
 impl Bytes {
+    pub fn new_len(l: usize) -> Self {
+        Self {
+            b: vec![0u8; l],
+        }
+    }
+    pub fn random(l: usize) -> Self {
+        Self {
+            b: get_random_bytes(l),
+        }
+    }
+    pub fn from_vec(v: Vec<u8>) -> Self {
+        Self {
+            b: v.clone(),
+        }
+    }
+    pub fn len(&self) -> usize {
+        self.b.len()
+    }
     /// Get bytes as u32.
     /// # PANICS
     /// Panics if self.len() != 4.
@@ -76,16 +94,33 @@ impl Index<usize> for Bytes {
     }
 }
 
+impl IndexMut<usize> for Bytes {
+    fn index_mut(&mut self, i: usize) -> &mut u8 {
+        &mut self.b[i]
+    }
+}
+
 #[macro_export]
 macro_rules! bytes {
     ($name:ident,$l:expr) => {
         /// Fixed length byte array.
         /// Because Rust requires fixed length arrays to have a known size at
-        /// compile time there's not generic fixed length byte array here.
+        /// compile time there's no generic fixed length byte array here.
         /// Use this to define the fixed length byte arrays needed in your code.
-        #[derive(Debug, Clone, Copy, PartialEq, Default)]
+        #[derive(Clone, Copy)]
         pub struct $name {
             b: [u8; $l],
+        }
+
+        impl $name {
+            pub fn new() -> Self {
+                Self {
+                    b: [0u8; $l]
+                }
+            }
+            pub fn len(&self) -> usize {
+                $l
+            }
         }
 
         impl Index<usize> for $name {
@@ -94,9 +129,20 @@ macro_rules! bytes {
                 &self.b[i]
             }
         }
+        impl IndexMut<usize> for $name {
+            fn index_mut(&mut self, i: usize) -> &mut u8 {
+                &mut self.b[i]
+            }
+        }
         impl Index<Range<usize>> for $name {
             type Output = [u8];
             fn index(&self, r: Range<usize>) -> &[u8] {
+                &self.b[r]
+            }
+        }
+        impl Index<RangeFull> for $name {
+            type Output = [u8];
+            fn index(&self, r: RangeFull) -> &[u8] {
                 &self.b[r]
             }
         }
