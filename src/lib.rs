@@ -61,6 +61,11 @@ impl Bytes {
             b: v.clone(),
         }
     }
+    pub fn from_array(v: &[u8]) -> Self {
+        Self {
+            b: v.to_vec(),
+        }
+    }
     pub fn len(&self) -> usize {
         self.b.len()
     }
@@ -118,8 +123,26 @@ macro_rules! bytes {
                     b: [0u8; $l]
                 }
             }
+            pub fn random() -> Self {
+                let mut tmp = [0u8; $l];
+                tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
+                Self {
+                    b: tmp.clone(),
+                }
+            }
+            pub fn from_array(v: [u8; $l]) -> Self {
+                Self {
+                    b: v.clone(),
+                }
+            }
             pub fn len(&self) -> usize {
                 $l
+            }
+            pub fn word(&self, start: usize) -> [u8; 4] {
+                assert!(self.b.len() >= start + 4);
+                let mut res = [0u8; 4];
+                res.copy_from_slice(&self.b[start..start+4]);
+                res
             }
         }
 
