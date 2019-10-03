@@ -3,13 +3,20 @@
 //!
 extern crate rand;
 
+use std::cmp::min;
 use std::convert::AsMut;
 use std::ops::{Index, IndexMut, Range, RangeFull};
 
 #[macro_export]
 macro_rules! hacspec_imports {
     () => {
-        use std::ops::{Index, IndexMut, Range, RangeFull};
+        extern crate abstract_integers;
+        extern crate num;
+        use self::abstract_integers::*;
+        use num::{BigUint, CheckedSub, Zero};
+        use std::ops::*;
+        use num::Num;
+        use std::{fmt, cmp::PartialEq};
     };
 }
 
@@ -47,9 +54,7 @@ pub struct Bytes {
 
 impl Bytes {
     pub fn new_len(l: usize) -> Self {
-        Self {
-            b: vec![0u8; l],
-        }
+        Self { b: vec![0u8; l] }
     }
     pub fn random(l: usize) -> Self {
         Self {
@@ -57,17 +62,31 @@ impl Bytes {
         }
     }
     pub fn from_vec(v: Vec<u8>) -> Self {
-        Self {
-            b: v.clone(),
-        }
+        Self { b: v.clone() }
     }
     pub fn from_array(v: &[u8]) -> Self {
-        Self {
-            b: v.to_vec(),
-        }
+        Self { b: v.to_vec() }
+    }
+    /// **Panics** if `self.len()` is not equal to the result length.
+    pub fn to_array<A>(&self) -> A
+    where
+        A: Default + AsMut<[u8]>,
+    {
+        let mut a = A::default();
+        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.b[..]);
+        a
     }
     pub fn len(&self) -> usize {
         self.b.len()
+    }
+    pub fn split(&self, block_size: usize) -> Vec<Bytes> {
+        let mut res = Vec::<Bytes>::new();
+        for i in (0..self.b.len()).step_by(block_size) {
+            res.push(Bytes::from_array(
+                &self.b[i..min(i + block_size, self.b.len())],
+            ));
+        }
+        res
     }
     /// Get bytes as u32.
     /// # PANICS
@@ -89,6 +108,17 @@ impl Bytes {
                 (x & 0xFF) as u8,
             ],
         }
+    }
+    /// Get bytes as u128.
+    /// # PANICS
+    /// Panics if self.len() > 16.
+    pub fn to_u128l(&self) -> u128 {
+        assert!(self.b.len() <= 16);
+        let mut r = self.b[0] as u128;
+        for i in 1..self.b.len() {
+            r |= (self.b[i] as u128) << i*8;
+        }
+        r
     }
 }
 
@@ -119,21 +149,21 @@ macro_rules! bytes {
 
         impl $name {
             pub fn new() -> Self {
-                Self {
-                    b: [0u8; $l]
-                }
+                Self { b: [0u8; $l] }
             }
             pub fn random() -> Self {
                 let mut tmp = [0u8; $l];
                 tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
-                Self {
-                    b: tmp.clone(),
-                }
+                Self { b: tmp.clone() }
             }
             pub fn from_array(v: [u8; $l]) -> Self {
-                Self {
-                    b: v.clone(),
-                }
+                Self { b: v.clone() }
+            }
+            pub fn from_slice(v: &[u8]) -> Self {
+                assert!(v.len() == $l);
+                let mut tmp = [0u8; $l];
+                tmp.copy_from_slice(v);
+                Self { b: tmp.clone() }
             }
             pub fn len(&self) -> usize {
                 $l
@@ -141,7 +171,7 @@ macro_rules! bytes {
             pub fn word(&self, start: usize) -> [u8; 4] {
                 assert!(self.b.len() >= start + 4);
                 let mut res = [0u8; 4];
-                res.copy_from_slice(&self.b[start..start+4]);
+                res.copy_from_slice(&self.b[start..start + 4]);
                 res
             }
         }
@@ -167,6 +197,16 @@ macro_rules! bytes {
             type Output = [u8];
             fn index(&self, r: RangeFull) -> &[u8] {
                 &self.b[r]
+            }
+        }
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.b[..].fmt(f)
+            }
+        }
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                self.b[..] == other.b[..]
             }
         }
     };

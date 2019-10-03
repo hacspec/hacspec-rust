@@ -7,3 +7,7 @@ license = "Apache-2.0"
 
 [dependencies]
 rand = "0.6" # ok?
+abstract_integers = "0.1"
+
+[patch.crates-io]
+abstract_integers = { path = "../rust-abstract-integers" }
