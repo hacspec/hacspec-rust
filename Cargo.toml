@@ -11,11 +11,3 @@ path = "src/hacspec.rs"
 
 [dependencies]
 rand = "0.6" # ok?
-# abstract_integers = "0.1"
-# num = "0.2"
-# syn = "0.14"
-# quote = "0.6"
-
-# TODO: drop
-# [patch.crates-io]
-# abstract_integers = { git = "https://github.com/franziskuskiefer/rust-abstract-integers.git", branch = "dev"}
