@@ -5,18 +5,23 @@ extern crate rand;
 
 use std::cmp::min;
 use std::convert::AsMut;
-use std::ops::{Index, IndexMut, Range, RangeFull};
+use std::ops::{Index, IndexMut, Range};
 
 #[macro_export]
 macro_rules! hacspec_imports {
     () => {
-        extern crate abstract_integers;
-        extern crate num;
-        use self::abstract_integers::*;
-        use num::{BigUint, CheckedSub, Zero};
+        use num::{BigUint, Num};
         use std::ops::*;
-        use num::Num;
-        use std::{fmt, cmp::PartialEq};
+        use std::{cmp::PartialEq, cmp::min, fmt};
+        use uint::*;
+    };
+}
+
+#[macro_export]
+macro_rules! hacspec_crates {
+    () => {
+        extern crate num;
+        extern crate uint;
     };
 }
 
@@ -67,6 +72,12 @@ impl Bytes {
     pub fn from_array(v: &[u8]) -> Self {
         Self { b: v.to_vec() }
     }
+    pub fn to_slice(&self) -> &[u8] {
+        self.b.as_slice()
+    }
+    pub fn extend(&mut self, v: Bytes) {
+        self.b.extend(v.b);
+    }
     /// **Panics** if `self.len()` is not equal to the result length.
     pub fn to_array<A>(&self) -> A
     where
@@ -116,7 +127,7 @@ impl Bytes {
         assert!(self.b.len() <= 16);
         let mut r = self.b[0] as u128;
         for i in 1..self.b.len() {
-            r |= (self.b[i] as u128) << i*8;
+            r |= (self.b[i] as u128) << i * 8;
         }
         r
     }
@@ -132,6 +143,19 @@ impl Index<usize> for Bytes {
 impl IndexMut<usize> for Bytes {
     fn index_mut(&mut self, i: usize) -> &mut u8 {
         &mut self.b[i]
+    }
+}
+
+impl Index<Range<usize>> for Bytes {
+    type Output = [u8];
+    fn index(&self, r: Range<usize>) -> &[u8] {
+        &self.b[r]
+    }
+}
+
+impl IndexMut<Range<usize>> for Bytes {
+    fn index_mut(&mut self, r: Range<usize>) -> &mut [u8] {
+        &mut self.b[r]
     }
 }
 

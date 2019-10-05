@@ -2,12 +2,20 @@
 name = "hacspec"
 version = "0.1.1"
 authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
-description = "Nothing here yet"
+edition = "2018"
+description = "A set of tools to write succinct crypto specs."
 license = "Apache-2.0"
+
+[lib]
+path = "src/hacspec.rs"
 
 [dependencies]
 rand = "0.6" # ok?
 abstract_integers = "0.1"
+num = "0.2"
+syn = "0.14"
+quote = "0.6"
 
+# TODO: drop
 [patch.crates-io]
 abstract_integers = { path = "../rust-abstract-integers" }
