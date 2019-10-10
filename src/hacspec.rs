@@ -5,14 +5,14 @@ extern crate rand;
 
 use std::cmp::min;
 use std::convert::AsMut;
-use std::ops::{Index, IndexMut, Range};
+use std::ops::{Add, Index, IndexMut, Range};
 
 #[macro_export]
 macro_rules! hacspec_imports {
     () => {
         use num::{BigUint, Num};
         use std::ops::*;
-        use std::{cmp::PartialEq, cmp::min, fmt};
+        use std::{cmp::min, cmp::PartialEq, fmt};
         use uint::*;
     };
 }
@@ -244,4 +244,47 @@ where
     let mut a = A::default();
     <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
     a
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Copy, Clone)]
+pub struct U64w(u64);
+impl Into<u64> for U64w {
+    fn into(self) -> u64 {
+        self.0
+    }
+}
+impl From<u64> for U64w {
+    fn from(x: u64) -> U64w {
+        U64w(x)
+    }
+}
+impl From<usize> for U64w {
+    fn from(x: usize) -> U64w {
+        U64w(x as u64)
+    }
+}
+
+impl<'a> Add<&'a U64w> for U64w {
+    type Output = U64w;
+
+    #[inline]
+    fn add(self, other: &U64w) -> U64w {
+        self.0.wrapping_add(other.0).into()
+    }
+}
+
+impl Add<U64w> for U64w {
+    type Output = U64w;
+
+    #[inline]
+    fn add(self, other: U64w) -> U64w {
+        self.0.wrapping_add(other.0).into()
+    }
+}
+
+#[test]
+fn u64w_test() {
+    let a = U64w(std::u64::MAX);
+    let b = U64w(2);
+    assert_eq!(U64w(1), a + &b);
 }
