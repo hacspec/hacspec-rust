@@ -5,7 +5,8 @@ extern crate rand;
 
 use std::cmp::min;
 use std::convert::AsMut;
-use std::ops::{Add, Index, IndexMut, Range};
+use std::fmt;
+use std::ops::{Add, Index, IndexMut, Range, RangeFull};
 
 #[macro_export]
 macro_rules! hacspec_imports {
@@ -14,6 +15,7 @@ macro_rules! hacspec_imports {
         use std::ops::*;
         use std::{cmp::min, cmp::PartialEq, fmt};
         use uint::*;
+        use wrapping_arithmetic::wrappit;
     };
 }
 
@@ -22,6 +24,7 @@ macro_rules! hacspec_crates {
     () => {
         extern crate num;
         extern crate uint;
+        extern crate wrapping_arithmetic;
     };
 }
 
@@ -57,6 +60,8 @@ pub struct Bytes {
     b: Vec<u8>,
 }
 
+// ======================== Variable length arrays ========================== //
+
 impl Bytes {
     pub fn new_len(l: usize) -> Self {
         Self { b: vec![0u8; l] }
@@ -85,6 +90,15 @@ impl Bytes {
     {
         let mut a = A::default();
         <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.b[..]);
+        a
+    }
+    /// **Panics** if `self` is too short `start-end` is not equal to the result length.
+    pub fn to_array_part<A>(&self, start: usize, end: usize) -> A
+    where
+        A: Default + AsMut<[u8]>,
+    {
+        let mut a = A::default();
+        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.b[start..end]);
         a
     }
     pub fn len(&self) -> usize {
@@ -158,6 +172,18 @@ impl IndexMut<Range<usize>> for Bytes {
         &mut self.b[r]
     }
 }
+impl From<&[u8]> for Bytes {
+    fn from(x: &[u8]) -> Bytes {
+        Self { b: x.to_vec() }
+    }
+}
+impl From<Vec<u8>> for Bytes {
+    fn from(x: Vec<u8>) -> Bytes {
+        Self { b: x.clone() }
+    }
+}
+
+// ========================== Fixed length arrays =========================== //
 
 #[macro_export]
 macro_rules! bytes {
@@ -167,73 +193,90 @@ macro_rules! bytes {
         /// compile time there's no generic fixed length byte array here.
         /// Use this to define the fixed length byte arrays needed in your code.
         #[derive(Clone, Copy)]
-        pub struct $name {
-            b: [u8; $l],
-        }
+        pub struct $name([u8; $l]);
 
         impl $name {
             pub fn new() -> Self {
-                Self { b: [0u8; $l] }
+                Self([0u8; $l])
             }
             pub fn random() -> Self {
                 let mut tmp = [0u8; $l];
                 tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
-                Self { b: tmp.clone() }
+                Self(tmp.clone())
             }
             pub fn from_array(v: [u8; $l]) -> Self {
-                Self { b: v.clone() }
+                Self(v.clone())
             }
             pub fn from_slice(v: &[u8]) -> Self {
                 assert!(v.len() == $l);
                 let mut tmp = [0u8; $l];
                 tmp.copy_from_slice(v);
-                Self { b: tmp.clone() }
+                Self(tmp.clone())
             }
             pub fn len(&self) -> usize {
                 $l
             }
             pub fn word(&self, start: usize) -> [u8; 4] {
-                assert!(self.b.len() >= start + 4);
+                assert!(self.0.len() >= start + 4);
                 let mut res = [0u8; 4];
-                res.copy_from_slice(&self.b[start..start + 4]);
+                res.copy_from_slice(&self.0[start..start + 4]);
                 res
+            }
+            /// **Panics** if `self` is too short `start-end` is not equal to the result length.
+            pub fn get<A>(&self, r: Range<usize>) -> A
+            where
+                A: Default + AsMut<[u8]>,
+            {
+                let mut a = A::default();
+                <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.0[r]);
+                a
             }
         }
 
         impl Index<usize> for $name {
             type Output = u8;
             fn index(&self, i: usize) -> &u8 {
-                &self.b[i]
+                &self.0[i]
             }
         }
         impl IndexMut<usize> for $name {
             fn index_mut(&mut self, i: usize) -> &mut u8 {
-                &mut self.b[i]
+                &mut self.0[i]
             }
         }
         impl Index<Range<usize>> for $name {
             type Output = [u8];
             fn index(&self, r: Range<usize>) -> &[u8] {
-                &self.b[r]
+                &self.0[r]
             }
         }
         impl Index<RangeFull> for $name {
             type Output = [u8];
             fn index(&self, r: RangeFull) -> &[u8] {
-                &self.b[r]
+                &self.0[r]
             }
         }
         impl fmt::Debug for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.b[..].fmt(f)
+                self.0[..].fmt(f)
             }
         }
         impl PartialEq for $name {
             fn eq(&self, other: &Self) -> bool {
-                self.b[..] == other.b[..]
+                self.0[..] == other.0[..]
+            }
+        }
+        impl From<[u8; $l]> for $name {
+            fn from(x: [u8; $l]) -> $name {
+                $name(x.clone())
             }
         }
     };
+}
+
+#[test]
+fn test_bytes() {
+    bytes!(TestBytes, 77);
 }
 
 pub fn to_array<A, T>(slice: &[T]) -> A
@@ -245,6 +288,8 @@ where
     <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
     a
 }
+
+// ============================== Wrapping u64 ============================== //
 
 #[derive(Debug, PartialEq, PartialOrd, Copy, Clone)]
 pub struct U64w(u64);
