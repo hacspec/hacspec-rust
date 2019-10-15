@@ -134,11 +134,11 @@ impl Bytes {
             ],
         }
     }
-    /// Get bytes as u128.
+    /// Get a u128 representing at most the first 16 byte of this byte vector.
     /// # PANICS
-    /// Panics if self.len() > 16.
-    pub fn to_u128l(&self) -> u128 {
-        assert!(self.b.len() <= 16);
+    /// Panics if there's nothing to convert, i.e. self.b.is_empty().
+    pub fn to_le_uint(&self) -> u128 {
+        assert!(!self.b.is_empty());
         let mut r = self.b[0] as u128;
         for i in 1..self.b.len() {
             r |= (self.b[i] as u128) << i * 8;
@@ -199,6 +199,9 @@ macro_rules! bytes {
             pub fn new() -> Self {
                 Self([0u8; $l])
             }
+            pub fn capacity() -> usize {
+                $l
+            }
             pub fn random() -> Self {
                 let mut tmp = [0u8; $l];
                 tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
@@ -213,6 +216,23 @@ macro_rules! bytes {
                 tmp.copy_from_slice(v);
                 Self(tmp.clone())
             }
+            pub fn from_slice_pad(v: &[u8]) -> Self {
+                assert!(v.len() <= $l);
+                let mut tmp = [0u8; $l];
+                for i in 0..v.len() {
+                    tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
+            /// This takes an arbitrary length slice and takes at most $l bytes
+            /// zero-padded into $name.
+            pub fn from_slice_lazy(v: &[u8]) -> Self {
+                let mut tmp = [0u8; $l];
+                for i in 0..min($l, v.len()) {
+                    tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
             pub fn len(&self) -> usize {
                 $l
             }
@@ -222,7 +242,10 @@ macro_rules! bytes {
                 res.copy_from_slice(&self.0[start..start + 4]);
                 res
             }
-            /// **Panics** if `self` is too short `start-end` is not equal to the result length.
+            /// Get an array for the given range `r`.
+            ///
+            /// #Panics
+            /// Panics if `self` is too short `start-end` is not equal to the result length.
             pub fn get<A>(&self, r: Range<usize>) -> A
             where
                 A: Default + AsMut<[u8]>,
@@ -269,6 +292,50 @@ macro_rules! bytes {
         impl From<[u8; $l]> for $name {
             fn from(x: [u8; $l]) -> $name {
                 $name(x.clone())
+            }
+        }
+        impl From<&[u8]> for $name {
+            fn from(x: &[u8]) -> $name {
+                $name::from_slice(x)
+            }
+        }
+        /// Build this array from a slice of the appropriate length of a u64s (little-endian).
+        /// # PANICS
+        /// Panics if the slice doesn't fit into this array.
+        impl From<&[u64]> for $name {
+            fn from(x: &[u64]) -> $name {
+                assert!($l == x.len() * 8);
+                let mut result: [u8; $l] = [0; $l];
+                for i in (0..x.len()).rev() {
+                    result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
+                    result[1 + (i * 8)] = ((x[i] & 0xFF00u64) >> 8) as u8;
+                    result[2 + (i * 8)] = ((x[i] & 0xFF0000u64) >> 16) as u8;
+                    result[3 + (i * 8)] = ((x[i] & 0xFF000000u64) >> 24) as u8;
+                    result[4 + (i * 8)] = ((x[i] & 0xFF00000000u64) >> 32) as u8;
+                    result[5 + (i * 8)] = ((x[i] & 0xFF0000000000u64) >> 40) as u8;
+                    result[6 + (i * 8)] = ((x[i] & 0xFF000000000000u64) >> 48) as u8;
+                    result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
+                }
+                $name(result.clone())
+            }
+        }
+        /// Build this array from an array of the appropriate length of a u64s (little-endian).
+        /// # PANICS
+        /// Panics if the slice doesn't fit into this array.
+        impl From<[u64; $l / 8]> for $name {
+            fn from(x: [u64; $l / 8]) -> $name {
+                let mut result: [u8; $l] = [0; $l];
+                for i in (0..x.len()).rev() {
+                    result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
+                    result[1 + (i * 8)] = ((x[i] & 0xFF00u64) >> 8) as u8;
+                    result[2 + (i * 8)] = ((x[i] & 0xFF0000u64) >> 16) as u8;
+                    result[3 + (i * 8)] = ((x[i] & 0xFF000000u64) >> 24) as u8;
+                    result[4 + (i * 8)] = ((x[i] & 0xFF00000000u64) >> 32) as u8;
+                    result[5 + (i * 8)] = ((x[i] & 0xFF0000000000u64) >> 40) as u8;
+                    result[6 + (i * 8)] = ((x[i] & 0xFF000000000000u64) >> 48) as u8;
+                    result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
+                }
+                $name(result.clone())
             }
         }
     };
