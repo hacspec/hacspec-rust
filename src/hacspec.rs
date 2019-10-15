@@ -81,7 +81,13 @@ impl Bytes {
         self.b.as_slice()
     }
     pub fn extend(&mut self, v: Bytes) {
-        self.b.extend(v.b);
+        self.b.extend(v.b.clone());
+    }
+    pub fn extend_from_slice(&mut self, v: &[u8]) {
+        self.b.extend(v);
+    }
+    pub fn push(&mut self, v: u8) {
+        self.b.push(v);
     }
     /// **Panics** if `self.len()` is not equal to the result length.
     pub fn to_array<A>(&self) -> A
@@ -254,6 +260,21 @@ macro_rules! bytes {
                 <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.0[r]);
                 a
             }
+
+            pub fn from_u64_slice_le(x: &[u64]) -> Self {
+                let mut result: [u8; $l] = [0; $l];
+                for i in (0..x.len()).rev() {
+                    result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
+                    result[1 + (i * 8)] = ((x[i] & 0xFF00u64) >> 8) as u8;
+                    result[2 + (i * 8)] = ((x[i] & 0xFF0000u64) >> 16) as u8;
+                    result[3 + (i * 8)] = ((x[i] & 0xFF000000u64) >> 24) as u8;
+                    result[4 + (i * 8)] = ((x[i] & 0xFF00000000u64) >> 32) as u8;
+                    result[5 + (i * 8)] = ((x[i] & 0xFF0000000000u64) >> 40) as u8;
+                    result[6 + (i * 8)] = ((x[i] & 0xFF000000000000u64) >> 48) as u8;
+                    result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
+                }
+                Self(result.clone())
+            }
         }
 
         impl Index<usize> for $name {
@@ -305,18 +326,7 @@ macro_rules! bytes {
         impl From<&[u64]> for $name {
             fn from(x: &[u64]) -> $name {
                 assert!($l == x.len() * 8);
-                let mut result: [u8; $l] = [0; $l];
-                for i in (0..x.len()).rev() {
-                    result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
-                    result[1 + (i * 8)] = ((x[i] & 0xFF00u64) >> 8) as u8;
-                    result[2 + (i * 8)] = ((x[i] & 0xFF0000u64) >> 16) as u8;
-                    result[3 + (i * 8)] = ((x[i] & 0xFF000000u64) >> 24) as u8;
-                    result[4 + (i * 8)] = ((x[i] & 0xFF00000000u64) >> 32) as u8;
-                    result[5 + (i * 8)] = ((x[i] & 0xFF0000000000u64) >> 40) as u8;
-                    result[6 + (i * 8)] = ((x[i] & 0xFF000000000000u64) >> 48) as u8;
-                    result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
-                }
-                $name(result.clone())
+                $name::from_u64_slice_le(x)
             }
         }
         /// Build this array from an array of the appropriate length of a u64s (little-endian).
@@ -324,18 +334,7 @@ macro_rules! bytes {
         /// Panics if the slice doesn't fit into this array.
         impl From<[u64; $l / 8]> for $name {
             fn from(x: [u64; $l / 8]) -> $name {
-                let mut result: [u8; $l] = [0; $l];
-                for i in (0..x.len()).rev() {
-                    result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
-                    result[1 + (i * 8)] = ((x[i] & 0xFF00u64) >> 8) as u8;
-                    result[2 + (i * 8)] = ((x[i] & 0xFF0000u64) >> 16) as u8;
-                    result[3 + (i * 8)] = ((x[i] & 0xFF000000u64) >> 24) as u8;
-                    result[4 + (i * 8)] = ((x[i] & 0xFF00000000u64) >> 32) as u8;
-                    result[5 + (i * 8)] = ((x[i] & 0xFF0000000000u64) >> 40) as u8;
-                    result[6 + (i * 8)] = ((x[i] & 0xFF000000000000u64) >> 48) as u8;
-                    result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
-                }
-                $name(result.clone())
+                $name::from_u64_slice_le(&x)
             }
         }
     };
