@@ -283,6 +283,18 @@ macro_rules! bytes {
                 &self.0[i]
             }
         }
+        impl Index<u8> for $name {
+            type Output = u8;
+            fn index(&self, i: u8) -> &u8 {
+                &self.0[usize::from(i)]
+            }
+        }
+        impl Index<i32> for $name {
+            type Output = u8;
+            fn index(&self, i: i32) -> &u8 {
+                &self.0[i as usize] // TODO: this conversion might be bad
+            }
+        }
         impl IndexMut<usize> for $name {
             fn index_mut(&mut self, i: usize) -> &mut u8 {
                 &mut self.0[i]
