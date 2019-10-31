@@ -89,6 +89,15 @@ impl Bytes {
     pub fn push(&mut self, v: u8) {
         self.b.push(v);
     }
+    pub fn update(&mut self, start: usize, v: &[u8]) {
+        assert!(self.b.len() >= start + v.len());
+        for (i, b) in v.iter().enumerate() {
+            self.b[start + i] = *b;
+        }
+    }
+    pub fn raw<'a>(&'a self) -> &'a [u8] {
+        &self.b
+    }
     /// **Panics** if `self.len()` is not equal to the result length.
     pub fn to_array<A>(&self) -> A
     where
@@ -239,6 +248,14 @@ macro_rules! bytes {
                 }
                 Self(tmp.clone())
             }
+            pub fn update(&mut self, start: usize, v: &[u8]) {
+                for (i, b) in v.iter().enumerate() {
+                    self.0[start + i] = *b;
+                }
+            }
+            pub fn raw<'a>(&'a self) -> &'a [u8] {
+                &self.0
+            }
             pub fn len(&self) -> usize {
                 $l
             }
@@ -330,6 +347,11 @@ macro_rules! bytes {
         impl From<&[u8]> for $name {
             fn from(x: &[u8]) -> $name {
                 $name::from_slice(x)
+            }
+        }
+        impl From<$name> for [u8; $l] {
+            fn from(x: $name) -> [u8; $l] {
+                x.0
             }
         }
         /// Build this array from a slice of the appropriate length of a u64s (little-endian).
