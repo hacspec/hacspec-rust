@@ -294,6 +294,17 @@ macro_rules! bytes {
             }
         }
 
+        impl Default for $name {
+            fn default() -> Self {
+                $name::new()
+            }
+        }
+        impl AsMut<[u8]> for $name {
+            fn as_mut(&mut self) -> &mut [u8] {
+                &mut self.0
+            }
+        }
+
         impl Index<usize> for $name {
             type Output = u8;
             fn index(&self, i: usize) -> &u8 {
