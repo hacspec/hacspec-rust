@@ -54,13 +54,20 @@ pub fn from_u32l(x: u32) -> (u8, u8, u8, u8) {
     )
 }
 
+/// Common trait for all byte arrays.
+pub trait ByteArray {
+    fn raw<'a>(&'a self) -> &'a [u8];
+    fn len(&self) -> usize;
+    fn iter(&self) -> std::slice::Iter<u8>;
+}
+
+// ======================== Variable length arrays ========================== //
+
 /// Variable length byte arrays.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Bytes {
     b: Vec<u8>,
 }
-
-// ======================== Variable length arrays ========================== //
 
 impl Bytes {
     pub fn new_len(l: usize) -> Self {
@@ -70,6 +77,9 @@ impl Bytes {
         Self {
             b: get_random_bytes(l),
         }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.b.is_empty()
     }
     pub fn from_vec(v: Vec<u8>) -> Self {
         Self { b: v.clone() }
@@ -89,14 +99,17 @@ impl Bytes {
     pub fn push(&mut self, v: u8) {
         self.b.push(v);
     }
-    pub fn update(&mut self, start: usize, v: &[u8]) {
-        assert!(self.b.len() >= start + v.len());
+    pub fn update_raw(&mut self, start: usize, v: &[u8]) {
+        assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
-            self.b[start + i] = *b;
+            self[start + i] = *b;
         }
     }
-    pub fn raw<'a>(&'a self) -> &'a [u8] {
-        &self.b
+    pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
+        assert!(self.len() >= start + v.len());
+        for (i, b) in v.iter().enumerate() {
+            self[start + i] = *b;
+        }
     }
     /// **Panics** if `self.len()` is not equal to the result length.
     pub fn to_array<A>(&self) -> A
@@ -104,7 +117,7 @@ impl Bytes {
         A: Default + AsMut<[u8]>,
     {
         let mut a = A::default();
-        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.b[..]);
+        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[..]);
         a
     }
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
@@ -113,17 +126,23 @@ impl Bytes {
         A: Default + AsMut<[u8]>,
     {
         let mut a = A::default();
-        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.b[start..end]);
+        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[start..end]);
         a
     }
-    pub fn len(&self) -> usize {
-        self.b.len()
+    /// **Panics** if `self` is too short `start-end` is not equal to the result length.
+    pub fn get<A>(&self, r: Range<usize>) -> A
+    where
+        A: Default + AsMut<[u8]>,
+    {
+        let mut a = A::default();
+        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[r]);
+        a
     }
     pub fn split(&self, block_size: usize) -> Vec<Bytes> {
         let mut res = Vec::<Bytes>::new();
-        for i in (0..self.b.len()).step_by(block_size) {
+        for i in (0..self.len()).step_by(block_size) {
             res.push(Bytes::from_array(
-                &self.b[i..min(i + block_size, self.b.len())],
+                &self[i..min(i + block_size, self.len())],
             ));
         }
         res
@@ -132,11 +151,11 @@ impl Bytes {
     /// # PANICS
     /// Panics if self.len() != 4.
     pub fn to_u32l(&self) -> u32 {
-        assert!(self.b.len() == 4);
-        (self.b[3] as u32) << 24
-            | (self.b[2] as u32) << 16
-            | (self.b[1] as u32) << 8
-            | (self.b[0] as u32)
+        assert!(self.len() == 4);
+        (self[3] as u32) << 24
+            | (self[2] as u32) << 16
+            | (self[1] as u32) << 8
+            | (self[0] as u32)
     }
     /// Read a u32 into a byte array.
     pub fn from_u32l(x: u32) -> Self {
@@ -153,12 +172,24 @@ impl Bytes {
     /// # PANICS
     /// Panics if there's nothing to convert, i.e. self.b.is_empty().
     pub fn to_le_uint(&self) -> u128 {
-        assert!(!self.b.is_empty());
-        let mut r = self.b[0] as u128;
-        for i in 1..self.b.len() {
-            r |= (self.b[i] as u128) << i * 8;
+        assert!(!self.is_empty());
+        let mut r = self[0] as u128;
+        for i in 1..self.len() {
+            r |= (self[i] as u128) << i * 8;
         }
         r
+    }
+}
+
+impl ByteArray for Bytes {
+    fn raw<'a>(&'a self) -> &'a [u8] {
+        &self.b
+    }
+    fn len(&self) -> usize {
+        self.b.len()
+    }
+    fn iter(&self) -> std::slice::Iter<u8> {
+        self.b.iter()
     }
 }
 
@@ -179,6 +210,13 @@ impl Index<Range<usize>> for Bytes {
     type Output = [u8];
     fn index(&self, r: Range<usize>) -> &[u8] {
         &self.b[r]
+    }
+}
+
+impl Index<RangeFull> for Bytes {
+    type Output = [u8];
+    fn index(&self, _r: RangeFull) -> &[u8] {
+        &self.b[..]
     }
 }
 
@@ -248,21 +286,23 @@ macro_rules! bytes {
                 }
                 Self(tmp.clone())
             }
-            pub fn update(&mut self, start: usize, v: &[u8]) {
+            pub fn update_raw(&mut self, start: usize, v: &[u8]) {
                 for (i, b) in v.iter().enumerate() {
-                    self.0[start + i] = *b;
+                    self[start + i] = *b;
                 }
             }
-            pub fn raw<'a>(&'a self) -> &'a [u8] {
-                &self.0
+            pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
+                for (i, b) in v.raw().iter().enumerate() {
+                    self[start + i] = *b;
+                }
             }
             pub fn len(&self) -> usize {
                 $l
             }
             pub fn word(&self, start: usize) -> [u8; 4] {
-                assert!(self.0.len() >= start + 4);
+                assert!(self.len() >= start + 4);
                 let mut res = [0u8; 4];
-                res.copy_from_slice(&self.0[start..start + 4]);
+                res.copy_from_slice(&self[start..start + 4]);
                 res
             }
             /// Get an array for the given range `r`.
@@ -274,7 +314,7 @@ macro_rules! bytes {
                 A: Default + AsMut<[u8]>,
             {
                 let mut a = A::default();
-                <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.0[r]);
+                <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[r]);
                 a
             }
 
@@ -302,6 +342,17 @@ macro_rules! bytes {
         impl AsMut<[u8]> for $name {
             fn as_mut(&mut self) -> &mut [u8] {
                 &mut self.0
+            }
+        }
+        impl ByteArray for $name {
+            fn raw<'a>(&'a self) -> &'a [u8] {
+                &self.0
+            }
+            fn len(&self) -> usize {
+                $l
+            }
+            fn iter(&self) -> std::slice::Iter<u8> {
+                self.0.iter()
             }
         }
 
