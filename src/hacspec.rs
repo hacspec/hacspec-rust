@@ -7,15 +7,17 @@ use std::cmp::min;
 use std::convert::AsMut;
 use std::fmt;
 use std::ops::{Add, Index, IndexMut, Range, RangeFull};
+use std::num::ParseIntError;
 
 #[macro_export]
 macro_rules! hacspec_imports {
     () => {
-        use num::{BigUint, Num};
+        use num::{BigUint, Num, Zero};
         use std::ops::*;
         use std::{cmp::min, cmp::PartialEq, fmt};
         use uint::*;
         use wrapping_arithmetic::wrappit;
+        use std::num::ParseIntError;
     };
 }
 
@@ -141,9 +143,7 @@ impl Bytes {
     pub fn split(&self, block_size: usize) -> Vec<Bytes> {
         let mut res = Vec::<Bytes>::new();
         for i in (0..self.len()).step_by(block_size) {
-            res.push(Bytes::from_array(
-                &self[i..min(i + block_size, self.len())],
-            ));
+            res.push(Bytes::from_array(&self[i..min(i + block_size, self.len())]));
         }
         res
     }
@@ -152,10 +152,7 @@ impl Bytes {
     /// Panics if self.len() != 4.
     pub fn to_u32l(&self) -> u32 {
         assert!(self.len() == 4);
-        (self[3] as u32) << 24
-            | (self[2] as u32) << 16
-            | (self[1] as u32) << 8
-            | (self[0] as u32)
+        (self[3] as u32) << 24 | (self[2] as u32) << 16 | (self[1] as u32) << 8 | (self[0] as u32)
     }
     /// Read a u32 into a byte array.
     pub fn from_u32l(x: u32) -> Self {
@@ -408,7 +405,7 @@ macro_rules! bytes {
         }
         impl From<&[u8]> for $name {
             fn from(x: &[u8]) -> $name {
-                $name::from_slice(x)
+                $name::from_slice_pad(x)
             }
         }
         impl From<$name> for [u8; $l] {
@@ -431,6 +428,17 @@ macro_rules! bytes {
         impl From<[u64; $l / 8]> for $name {
             fn from(x: [u64; $l / 8]) -> $name {
                 $name::from_u64_slice_le(&x)
+            }
+        }
+        /// Read hex string to bytes.
+        impl From<&str> for $name {
+            fn from(s: &str) -> $name {
+                assert!(s.len() % 2 == 0);
+                let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
+                    .step_by(2)
+                    .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+                    .collect();
+                $name::from(&b.expect("Error parsing hex string")[..])
             }
         }
     };
