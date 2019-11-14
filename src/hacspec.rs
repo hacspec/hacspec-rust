@@ -15,7 +15,7 @@ macro_rules! hacspec_imports {
         use num::{BigUint, Num, Zero};
         use std::ops::*;
         use std::{cmp::min, cmp::PartialEq, fmt};
-        use uint::*;
+        use uint_n::*;
         use wrapping_arithmetic::wrappit;
         use std::num::ParseIntError;
     };
@@ -25,7 +25,7 @@ macro_rules! hacspec_imports {
 macro_rules! hacspec_crates {
     () => {
         extern crate num;
-        extern crate uint;
+        extern crate uint_n;
         extern crate wrapping_arithmetic;
     };
 }
