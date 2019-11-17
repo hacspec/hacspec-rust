@@ -11,3 +11,9 @@ path = "src/hacspec.rs"
 
 [dependencies]
 rand = "0.6" # ok?
+
+[dev-dependencies]
+wrapping_arithmetic = "0.1"
+num = "0.2"
+uint = { git = "https://github.com/franziskuskiefer/rust-uint-n" }
+# uint = { path = "../uint_n" }

@@ -5,19 +5,17 @@ extern crate rand;
 
 use std::cmp::min;
 use std::convert::AsMut;
-use std::fmt;
 use std::ops::{Add, Index, IndexMut, Range, RangeFull};
-use std::num::ParseIntError;
 
 #[macro_export]
 macro_rules! hacspec_imports {
     () => {
         use num::{BigUint, Num, Zero};
+        use std::num::ParseIntError;
         use std::ops::*;
         use std::{cmp::min, cmp::PartialEq, fmt};
-        use uint_n::*;
+        use uint::{natmod_p::*, traits::*, uint_n::*};
         use wrapping_arithmetic::wrappit;
-        use std::num::ParseIntError;
     };
 }
 
@@ -25,7 +23,7 @@ macro_rules! hacspec_imports {
 macro_rules! hacspec_crates {
     () => {
         extern crate num;
-        extern crate uint_n;
+        extern crate uint;
         extern crate wrapping_arithmetic;
     };
 }
@@ -329,6 +327,15 @@ macro_rules! bytes {
                 }
                 Self(result.clone())
             }
+
+            /// Convert a `Field` to a byte array (little endian).
+            /// TODO: The `From` trait doesn't work for this for some reason.
+            pub fn from_field<T>(f: T) -> Self
+            where
+                T: Field,
+            {
+                $name::from(&f.to_bytes_le()[..])
+            }
         }
 
         impl Default for $name {
@@ -444,11 +451,6 @@ macro_rules! bytes {
     };
 }
 
-#[test]
-fn test_bytes() {
-    bytes!(TestBytes, 77);
-}
-
 pub fn to_array<A, T>(slice: &[T]) -> A
 where
     A: Default + AsMut<[T]>,
@@ -457,49 +459,4 @@ where
     let mut a = A::default();
     <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
     a
-}
-
-// ============================== Wrapping u64 ============================== //
-
-#[derive(Debug, PartialEq, PartialOrd, Copy, Clone)]
-pub struct U64w(u64);
-impl Into<u64> for U64w {
-    fn into(self) -> u64 {
-        self.0
-    }
-}
-impl From<u64> for U64w {
-    fn from(x: u64) -> U64w {
-        U64w(x)
-    }
-}
-impl From<usize> for U64w {
-    fn from(x: usize) -> U64w {
-        U64w(x as u64)
-    }
-}
-
-impl<'a> Add<&'a U64w> for U64w {
-    type Output = U64w;
-
-    #[inline]
-    fn add(self, other: &U64w) -> U64w {
-        self.0.wrapping_add(other.0).into()
-    }
-}
-
-impl Add<U64w> for U64w {
-    type Output = U64w;
-
-    #[inline]
-    fn add(self, other: U64w) -> U64w {
-        self.0.wrapping_add(other.0).into()
-    }
-}
-
-#[test]
-fn u64w_test() {
-    let a = U64w(std::u64::MAX);
-    let b = U64w(2);
-    assert_eq!(U64w(1), a + &b);
 }
