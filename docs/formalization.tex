@@ -1,0 +1,77 @@
+\documentclass[10pt, english, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[english]{babel}
+\usepackage{fullpage}
+\usepackage{minted}
+\usepackage{amsmath, amssymb}
+
+\title{The Rustspec language}
+\author{Denis Merigoux, Inria}
+
+\newcommand{\rust}[1]{\mintinline[mathescape=true]{rust}{#1}}
+
+\begin{document}
+\maketitle
+
+The Rustspec language is a subset of the Rust programming language designed
+for writing concise cryptographic specifications.
+
+\section{Syntax}
+
+\begin{align*}
+\text{Crate } \rust{$c$}  &::=\quad \{\;\rust{$i_1$},\ldots,\rust{$i_n$}\;\}\\
+\text{Item } \rust{$i$}     &::=\quad \rust{extern crate $c$;}& \text{External crate imports} \\
+                            &\quad\;\;|\quad \rust{use $p$;}& \text{Item imports} \\
+                            &\quad\;\;|\quad \rust{static $x$ : $t$ = $e$}&\text{Static variables} \\
+                            &\quad\;\;|\quad \rust{const $n$ : $t$ = $e$}&\text{Const variables (inlined)} \\
+                            &\quad\;\;|\quad \rust{type $y$ = $t$}&\text{Type aliases} \\
+                            &\quad\;\;|\quad \rust{fn $f$ ( $x_1$ : $t_1$ ,..., $x_n$ : $t_n$ ) -> $t$ { $e$ }}&\text{Function}\\
+\text{Type }\rust{$t$}      &::=\quad \rust{$y$}
+                            \quad|\quad \rust{$c$::$y$}&\text{Type variables} \\
+                            &\quad\;\;|\quad \rust{usize}\quad |\quad \rust{u8}\quad |\quad \rust{u32}\quad |\quad \rust{u64}&\text{Native integers} \\
+                            &\quad\;\;|\quad \rust{( $t_1$ ,..., $t_n$ )}&\text{Tuples} \\
+                            &\quad\;\;|\quad \rust{[ $t$ ; $s$ ]}&\text{Fixed-size arrays} \\
+\text{Path }\rust{$p$}      &::=\quad \rust{$c$::$x$}
+                            \quad|\quad \rust{$c$::$y$}
+                            \quad|\quad \rust{$c$::$f$} \\
+\text{Expression }\rust{$e$}&::=\quad \rust{$l$}
+                            \quad|\quad \rust{$x$}
+                            \quad|\quad \rust{$n$}
+                            \quad|\quad \rust{$c$::$y$}&\text{Literals and variables} \\
+                            &\quad\;\;|\quad \rust{$e_1$ $o$ $e_2$}
+                            \quad|\quad \rust{$u$ $e$}&\text{Operations} \\
+                            &\quad\;\;|\quad \rust{$e$ : $t$}&\text{Type annotations} \\
+                            &\quad\;\;|\quad \rust{let $q$ = $e_1$; $e_2$}
+                            \quad|\quad \rust{let $q$ : $t$ = $e_1$; $e_2$}&\text{Let bindings} \\
+                            &\quad\;\;|\quad \rust{[ $e$ ; $s$ ]}
+                            \quad|\quad \rust{[ $e_1$ ,..., $e_n$ ]}&\text{Arrays} \\
+                            &\quad\;\;|\quad \rust{( $e_1$ ,..., $e_n$ )}&\text{Tuples}\\
+                            &\quad\;\;|\quad \rust{$f$ ( $e_1$ ,..., $e_n$ )}
+                            \quad|\quad \rust{$c$::$f$ ( $e_1$ ,..., $e_n$ )}&\text{Function calls} \\
+                            &\quad\;\;|\quad \rust{if $e_1$ { $e_2$ } else { $e_3$ } }&\text{Conditional}\\
+                            &\quad\;\;|\quad \rust{for $x$ in $s_1$..$s_2$ { $e$ }}&\text{For loop}\\
+                            &\quad\;\;|\quad \rust{$e_1$ [ $e_2$ ]}&\text{Array indexing} \\
+\text{Binary operator }\rust{$o$}&::=\quad \rust{+}
+                            \quad|\quad \rust{-}
+                            \quad|\quad \rust{*}
+                            \quad|\quad \rust{/}
+                            \quad|\quad \rust{&}\\
+                            &\quad\;\;|\quad \rust{|}
+                            \quad|\quad \rust{^}
+                            \quad|\quad \rust{~}
+                            \quad|\quad \rust{>>}
+                            \quad|\quad \rust{<<}
+                            \\
+\text{Unary operator }\rust{$o$}&::=\quad \rust{-}
+                            \quad|\quad \rust{~}\\
+\text{Size }\rust{$s$}&::=\quad \rust{$l$} \quad | \quad \rust{$n$}\\
+\text{Pattern }\rust{$q$}&::=\quad \rust{$x$} \quad | \quad \rust{( $x_1$ ,..., $x_n$ )}\\
+\text{Literal }\rust{$l$}&::=\quad \rust{$d$} \quad|\quad \rust{0x$h$}
+\end{align*}
+
+
+
+\end{document}
