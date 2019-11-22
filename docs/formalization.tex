@@ -7,6 +7,8 @@
 \usepackage{fullpage}
 \usepackage{minted}
 \usepackage{amsmath, amssymb}
+\usepackage[colorlinks]{hyperref}
+\usepackage{mathpartir}
 
 \title{The Rustspec language}
 \author{Denis Merigoux, Inria}
@@ -19,59 +21,146 @@
 The Rustspec language is a subset of the Rust programming language designed
 for writing concise cryptographic specifications.
 
-\section{Syntax}
+\section{Core language}
 
+The idea of Rustspec is to isolate a subset of Rust that would behave as an affine,
+functional, state-passing programming language. For that, we simply forbid
+any kind of borrowing as well as reference types and \rust{mut} variables.
+In that setting, we claim that the resulting programming language behaves
+like  an extension of the linear line calculus of section 1.2 of \cite{pierce2005advanced}
+with the unrestricted terms corresponding to Rust types implementing the \rust{Copy}
+trait.
+
+We formalize the Rustspec-core language, a strict subset
+of Rust that minimally demonstrate our claim. The syntax of the language is
+described in \autoref{fig:rustspec-core-syntax}.
+
+We then show that Rustspec-core programs can be translated to a standard
+affine lambda calculus.
+
+
+\begin{figure}
 \begin{align*}
-\text{Crate } \rust{$c$}  &::=\quad \{\;\rust{$i_1$},\ldots,\rust{$i_n$}\;\}\\
-\text{Item } \rust{$i$}     &::=\quad \rust{extern crate $c$;}& \text{External crate imports} \\
-                            &\quad\;\;|\quad \rust{use $p$;}& \text{Item imports} \\
-                            &\quad\;\;|\quad \rust{static $x$ : $t$ = $e$}&\text{Static variables} \\
-                            &\quad\;\;|\quad \rust{const $n$ : $t$ = $e$}&\text{Const variables (inlined)} \\
-                            &\quad\;\;|\quad \rust{type $y$ = $t$}&\text{Type aliases} \\
+\text{Crate } \rust{$k$}  &::=\quad \varnothing \quad|\quad i\cdot k &\text{List of items}\\
+\text{Item } \rust{$i$}     &::=\quad \rust{static $x$ : $t$ = $l$}&\text{Static variables} \\
                             &\quad\;\;|\quad \rust{fn $f$ ( $x_1$ : $t_1$ ,..., $x_n$ : $t_n$ ) -> $t$ { $e$ }}&\text{Function}\\
-\text{Type }\rust{$t$}      &::=\quad \rust{$y$}
-                            \quad|\quad \rust{$c$::$y$}&\text{Type variables} \\
-                            &\quad\;\;|\quad \rust{usize}\quad |\quad \rust{u8}\quad |\quad \rust{u32}\quad |\quad \rust{u64}&\text{Native integers} \\
-                            &\quad\;\;|\quad \rust{( $t_1$ ,..., $t_n$ )}&\text{Tuples} \\
-                            &\quad\;\;|\quad \rust{[ $t$ ; $s$ ]}&\text{Fixed-size arrays} \\
-\text{Path }\rust{$p$}      &::=\quad \rust{$c$::$x$}
-                            \quad|\quad \rust{$c$::$y$}
-                            \quad|\quad \rust{$c$::$f$} \\
-\text{Expression }\rust{$e$}&::=\quad \rust{$l$}
-                            \quad|\quad \rust{$x$}
-                            \quad|\quad \rust{$n$}
-                            \quad|\quad \rust{$c$::$y$}&\text{Literals and variables} \\
+\text{Type }\rust{$t$}      &::=\quad \rust{$c$}\\
+                            &\quad\;\;|\quad \rust{$d$}\\
+\text{Copyable type }\rust{$c$} &::=\quad \rust{bool}\quad|\quad \rust{usize} \\
+\text{Non-copyable type }\rust{$d$} &::=\quad \rust{( $t_1$ ,..., $t_n$ )}&\text{Tuples} \\
+\text{Expression }\rust{$e$}&::=\quad \rust{$x$}
+                            \quad|\quad \rust{$v$}&\text{Values and variables} \\
                             &\quad\;\;|\quad \rust{$e_1$ $o$ $e_2$}
                             \quad|\quad \rust{$u$ $e$}&\text{Operations} \\
-                            &\quad\;\;|\quad \rust{$e$ : $t$}&\text{Type annotations} \\
-                            &\quad\;\;|\quad \rust{let $q$ = $e_1$; $e_2$}
-                            \quad|\quad \rust{let $q$ : $t$ = $e_1$; $e_2$}&\text{Let bindings} \\
-                            &\quad\;\;|\quad \rust{[ $e$ ; $s$ ]}
-                            \quad|\quad \rust{[ $e_1$ ,..., $e_n$ ]}&\text{Arrays} \\
+                            &\quad\;\;|\quad  \rust{let $q$ : $t$ = $e_1$; $e_2$}&\text{Let bindings} \\
                             &\quad\;\;|\quad \rust{( $e_1$ ,..., $e_n$ )}&\text{Tuples}\\
-                            &\quad\;\;|\quad \rust{$f$ ( $e_1$ ,..., $e_n$ )}
-                            \quad|\quad \rust{$c$::$f$ ( $e_1$ ,..., $e_n$ )}&\text{Function calls} \\
-                            &\quad\;\;|\quad \rust{if $e_1$ { $e_2$ } else { $e_3$ } }&\text{Conditional}\\
-                            &\quad\;\;|\quad \rust{for $x$ in $s_1$..$s_2$ { $e$ }}&\text{For loop}\\
-                            &\quad\;\;|\quad \rust{$e_1$ [ $e_2$ ]}&\text{Array indexing} \\
+                            &\quad\;\;|\quad \rust{$f$ ( $e_1$ ,..., $e_n$ )}&\text{Function calls} \\
+                            &\quad\;\;|\quad \rust{if $e_1$ { $e_2$ } else { $e_3$ } }&\text{Conditionals}\\
 \text{Binary operator }\rust{$o$}&::=\quad \rust{+}
                             \quad|\quad \rust{-}
                             \quad|\quad \rust{*}
-                            \quad|\quad \rust{/}
-                            \quad|\quad \rust{&}\\
-                            &\quad\;\;|\quad \rust{|}
+                            \quad|\quad \rust{/} &\text{Arithmetics}\\
+                            &\quad\;\;|\quad \rust{&}
+                            \quad|\quad\rust{|}
                             \quad|\quad \rust{^}
                             \quad|\quad \rust{~}
                             \quad|\quad \rust{>>}
-                            \quad|\quad \rust{<<}
+                            \quad|\quad \rust{<<}&\text{Bitwise operations}
                             \\
-\text{Unary operator }\rust{$o$}&::=\quad \rust{-}
+\text{Unary operator }\rust{$u$}&::=\quad \rust{-}
                             \quad|\quad \rust{~}\\
-\text{Size }\rust{$s$}&::=\quad \rust{$l$} \quad | \quad \rust{$n$}\\
 \text{Pattern }\rust{$q$}&::=\quad \rust{$x$} \quad | \quad \rust{( $x_1$ ,..., $x_n$ )}\\
-\text{Literal }\rust{$l$}&::=\quad \rust{$d$} \quad|\quad \rust{0x$h$}
+\text{Literal }\rust{$l$}&::=\quad \rust{$d$} \quad|\quad \rust{0x$h$}\quad|\quad\rust{true}\quad|\quad\rust{false}\\
+\end{align*}
+\caption{Syntax of Rustspec-core\label{fig:rustspec-core-syntax}}
+\end{figure}
+
+\begin{figure}
+\begin{align*}
+\text{Qualifer }\mathsf{q} &::=\quad\mathsf{lin}&\text{Linear}\\
+                           &\quad\;\;|\quad\mathsf{un}&\text{Unrestricted}\\
+\text{Literal }\mathsf{l}  &::=\quad d\quad|\quad \mathsf{true}\quad|\quad\mathsf{false}\\
+\text{Term }\mathsf{t}     &::=\quad x &\text{Variables}\\
+                           &\quad\;\;|\quad\mathsf{q}\;\mathsf{l}&\text{Literals}\\
+                           &\quad\;\;|\quad \mathsf{if}\;\mathsf{t}_1\;\mathsf{then}\;\mathsf{t}_2\;\mathsf{else}\;\mathsf{t}_3&\text{Conditionals}\\
+                           &\quad\;\;|\quad\mathsf{q}<\mathsf{t}_1,\mathsf{t}_2>&\text{Pairs}\\
+                           &\quad\;\;|\quad \mathsf{split}\;\mathsf{t}_1\;\mathsf{as}\;x_1,x_2\;\mathsf{in}\;\mathsf{t}_2&\text{Splits}\\
+                           &\quad\;\;|\quad \mathsf{q}\;\lambda(x:\mathsf{T}).\;\mathsf{t}&\text{Abstraction}\\
+                           &\quad\;\;|\quad\mathsf{t}_1\;\mathsf{t}_2&\text{Application}\\
+\text{Pretype }\mathsf{P}  &::= \quad\mathsf{Bool}\quad|\quad\mathsf{Int}&\text{Booleans and integers}\\
+                           &\quad\;\;|\quad\mathsf{T} * \mathsf{T}&\text{Pairs}\\
+                           &\quad\;\;|\quad\mathsf{T}\rightarrow\mathsf{T}&\text{Functions}\\
+\text{Type }\mathsf{T}      &::=\quad\mathsf{q}\;\mathsf{P}&\text{Qualified pretype}
+\end{align*}
+\caption{Syntax of the affine lambda calculus}
+\end{figure}
+
+\begin{figure}
+\begin{align*}
+\text{Variable translation context }\Gamma &::= \quad\varnothing\quad|\quad \rust{$x$}\rightsquigarrow x,\;\Gamma
+                               \quad|\quad \rust{$f$}\rightsquigarrow x,\;\Gamma
 \end{align*}
 
+\newcommand{\trans}[3]{#1 \vdash #2\rightsquigarrow #3}
+\newcommand{\transtype}[2]{#1\rightarrowtail #2}
 
+\begin{mathpar}
+\inferrule[T-Bool]{{}}{\transtype{\rust{bool}}{\mathsf{un}\;\mathsf{Bool}}}
+
+\inferrule[T-Int]{{}}{\transtype{\rust{usize}}{\mathsf{un}\;\mathsf{Int}}}
+
+\inferrule[T-Tuple]{{}}{\transtype{\rust{( $t_1$ ,..., $t_n$ )}}{\mathsf{lin}\; (\mathsf{T}_1*(\mathsf{lin}\;\cdots*(\mathsf{lin}\;\mathsf{T}_{n-1} * \mathsf{T}_n)))}}
+\end{mathpar}
+\begin{mathpar}
+\inferrule[T-True]{{}}{\trans{\Gamma}{\rust{true}}{\mathsf{true}}}
+
+\inferrule[T-False]{{}}{\trans{\Gamma}{\rust{false}}{\mathsf{false}}}
+
+\inferrule[T-Decimal]{{}}{\trans{\Gamma}{\rust{$d$}}{d}}
+
+\inferrule[T-Hex]{{}}{\trans{\Gamma}{\rust{0x$h$}}{\mathsf{hex2dec}(h)}}
+
+\inferrule[T-Var]{{}}{\trans{\rust{$x$}\rightsquigarrow x,\;\Gamma}{\rust{$x$}}{x}}
+
+\inferrule[T-LetVar]{
+  \trans{\Gamma}{\rust{$e_1$}}{\mathsf{t}_1}\\
+  \transtype{\rust{$t$}}{\mathsf{T}}\\
+  \trans{\rust{$x$}\rightsquigarrow x,\;\Gamma}{\rust{$e_2$}}{\mathsf{t}_2}
+}{
+  \trans{\Gamma}{\rust{let $x$ : $t$ = $e_1$; $e_2$}}{(\mathsf{un}\;\lambda(x:\mathsf{T}).\;\mathsf{t}_2)\;\mathsf{t}_1}
+}
+
+\inferrule[T-LetTup]{
+  \trans{\Gamma}{\rust{$e_1$}}{\mathsf{t}_1}\\
+  \trans{\rust{$x_1$}\rightsquigarrow x_1,\ldots,\rust{$x_n$}\rightsquigarrow x_n,\;\Gamma}{\rust{$e_2$}}{\mathsf{t}_2}
+}{
+  \trans{\Gamma}{\rust{let ( $x_1$ ,..., $x_n$ ) : $t$ = $e_1$; $e_2$}}{\mathsf{split}\;\mathsf{t}_1\;\mathsf{as}\;x_1,y\;\mathsf{in}\;(\mathsf{split}\;y\;\mathsf{as}\;x_2,y\;\mathsf{in}\cdots(\mathsf{split}\;y\;\mathsf{as}\;x_{n-1},x_n\;\mathsf{in}\;\mathsf{t}_2))}
+}
+
+\inferrule[T-If]{
+  \trans{\Gamma}{\rust{$e_1$}}{\mathsf{t}_1}\\
+  \trans{\Gamma}{\rust{$e_2$}}{\mathsf{t}_2}\\
+  \trans{\Gamma}{\rust{$e_3$}}{\mathsf{t}_3}\\
+}{
+\trans{\Gamma}{\rust{if $e_1$ { $e_2$ } else { $e_3$ }}}{\mathsf{if}\;\mathsf{t}_1\;\mathsf{then}\;\mathsf{t}_2\;\mathsf{else}\;\mathsf{t}_3}
+}
+
+\inferrule[T-Tup]{
+\trans{\Gamma}{\rust{$e_1$}}{\mathsf{t}_1}\\
+\cdots\\
+\trans{\Gamma}{\rust{$e_n$}}{\mathsf{t}_n}\\
+}{
+\trans{\Gamma}{\rust{( $e_1$ ,..., $e_n$ )}}{\mathsf{lin}<\mathsf{t}_1, \mathsf{lin}<\mathsf{t}_2,\ldots, \mathsf{lin}<\mathsf{t}_n>>>}
+}
+\end{mathpar}
+\caption{Translation of Rustspec-core to an affine lambda calculus\label{fig:rustspec-core-translation}}
+\end{figure}
+
+
+
+
+
+\bibliographystyle{plain}
+\bibliography{rustspec}
 
 \end{document}
