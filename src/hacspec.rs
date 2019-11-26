@@ -105,6 +105,12 @@ impl Bytes {
             self[start + i] = *b;
         }
     }
+    pub fn update_vec(&mut self, start: usize, v: Vec<u8>) {
+        assert!(self.len() >= start + v.len());
+        for (i, b) in v.iter().enumerate() {
+            self[start + i] = *b;
+        }
+    }
     pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
         assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
@@ -230,6 +236,11 @@ impl From<Vec<u8>> for Bytes {
         Self { b: x.clone() }
     }
 }
+impl Into<Vec<u8>> for Bytes {
+    fn into(self) -> Vec<u8> {
+        self.b.to_vec()
+    }
+}
 
 // ========================== Fixed length arrays =========================== //
 
@@ -281,6 +292,15 @@ macro_rules! bytes {
                 }
                 Self(tmp.clone())
             }
+            /// This takes an arbitrary length vec and takes at most $l bytes
+            /// zero-padded into $name.
+            pub fn from_vec_lazy(v: Vec<u8>) -> Self {
+                let mut tmp = [0u8; $l];
+                for i in 0..min($l, v.len()) {
+                    tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
             pub fn update_raw(&mut self, start: usize, v: &[u8]) {
                 for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
@@ -288,6 +308,11 @@ macro_rules! bytes {
             }
             pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
                 for (i, b) in v.raw().iter().enumerate() {
+                    self[start + i] = *b;
+                }
+            }
+            pub fn update_vec(&mut self, start: usize, v: Vec<u8>) {
+                for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
                 }
             }
@@ -405,6 +430,21 @@ macro_rules! bytes {
                 self.0[..] == other.0[..]
             }
         }
+        impl From<Vec<u8>> for $name {
+            fn from(x: Vec<u8>) -> $name {
+                assert!(x.len() <= $l);
+                let mut tmp = [0u8; $l];
+                for (i, e) in x.iter().enumerate() {
+                    tmp[i] = *e;
+                }
+                $name(tmp.clone())
+            }
+        }
+        impl From<$name> for Vec<u8> {
+            fn from(x: $name) -> Vec<u8> {
+                x.0.to_vec()
+            }
+        }
         impl From<[u8; $l]> for $name {
             fn from(x: [u8; $l]) -> $name {
                 $name(x.clone())
@@ -450,6 +490,28 @@ macro_rules! bytes {
         }
     };
 }
+
+// Some convenience functions.
+// TODO: Do we really need them?
+
+macro_rules! array_to_vec {
+    ($l:expr,$name:ident) => {
+        struct $name([u8; $l]);
+        impl From<$name> for Vec<u8> {
+            fn from(x: $name) -> Vec<u8> {
+                x.0.to_vec()
+            }
+        }
+        impl From<[u8; $l]> for $name {
+            fn from(x: [u8; $l]) -> $name {
+                $name(x)
+            }
+        }
+    };
+}
+array_to_vec!(2, Array2);
+array_to_vec!(4, Array4);
+array_to_vec!(8, Array8);
 
 pub fn to_array<A, T>(slice: &[T]) -> A
 where
