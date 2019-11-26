@@ -63,6 +63,18 @@ pub trait ByteArray {
 
 // ======================== Variable length arrays ========================== //
 
+#[derive(Copy, Clone, Debug)]
+pub struct ByteSlice<'a> {
+    b: &'a[u8]
+}
+impl<'a> ByteSlice<'a> {
+    fn new(b_in: &'a Bytes) -> ByteSlice<'a> {
+        Self {
+            b: &b_in[..]
+        }
+    }
+}
+
 /// Variable length byte arrays.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Bytes {
@@ -70,6 +82,9 @@ pub struct Bytes {
 }
 
 impl Bytes {
+    pub fn get_slice<'a>(&'a self) -> ByteSlice<'a> {
+        ByteSlice::new(&self)
+    }
     pub fn new_len(l: usize) -> Self {
         Self { b: vec![0u8; l] }
     }
