@@ -5,7 +5,8 @@ extern crate rand;
 
 use std::cmp::min;
 use std::convert::AsMut;
-use std::ops::{Add, Index, IndexMut, Range, RangeFull};
+use std::ops::{Index, IndexMut, Range, RangeFull};
+use std::num::ParseIntError;
 
 #[macro_export]
 macro_rules! hacspec_imports {
@@ -52,6 +53,15 @@ pub fn from_u32l(x: u32) -> (u8, u8, u8, u8) {
         ((x & 0xFF00) >> 8) as u8,
         (x & 0xFF) as u8,
     )
+}
+
+pub fn hex_string_to_bytes(s: &str) -> Vec<u8> {
+    assert!(s.len() % 2 == 0);
+    let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+        .collect();
+    b.expect("Error parsing hex string")
 }
 
 /// Common trait for all byte arrays.
@@ -254,6 +264,12 @@ impl From<Vec<u8>> for Bytes {
 impl Into<Vec<u8>> for Bytes {
     fn into(self) -> Vec<u8> {
         self.b.to_vec()
+    }
+}
+/// Read hex string to Bytes.
+impl From<&str> for Bytes {
+    fn from(s: &str) -> Bytes {
+        Bytes::from(hex_string_to_bytes(s))
     }
 }
 
@@ -495,12 +511,7 @@ macro_rules! bytes {
         /// Read hex string to bytes.
         impl From<&str> for $name {
             fn from(s: &str) -> $name {
-                assert!(s.len() % 2 == 0);
-                let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
-                    .step_by(2)
-                    .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-                    .collect();
-                $name::from(&b.expect("Error parsing hex string")[..])
+                $name::from(hex_string_to_bytes(s))
             }
         }
     };
