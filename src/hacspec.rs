@@ -207,17 +207,17 @@ impl From<&str> for Seq<u8> {
 // ========================== Fixed length arrays =========================== //
 
 #[macro_export]
-macro_rules! bytes {
-    ($name:ident,$l:expr) => {
+macro_rules! array {
+    ($name:ident,$l:expr,$t:ty) => {
         /// Fixed length byte array.
         /// Because Rust requires fixed length arrays to have a known size at
         /// compile time there's no generic fixed length byte array here.
         /// Use this to define the fixed length byte arrays needed in your code.
         #[derive(Clone, Copy)]
-        pub struct $name([u8; $l]);
+        pub struct $name([$t; $l]);
 
         impl $name {
-            fn hex_string_to_bytes(s: &str) -> Vec<u8> {
+            fn hex_string_to_bytes(s: &str) -> Vec<$t> {
                 assert!(s.len() % 2 == 0);
                 let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
                     .step_by(2)
@@ -229,12 +229,12 @@ macro_rules! bytes {
             pub fn new() -> Self {
                 Self([0u8; $l])
             }
-            pub fn from_array(v: [u8; $l]) -> Self {
+            pub fn from_array(v: [$t; $l]) -> Self {
                 Self(v.clone())
             }
-            pub fn from_slice_pad(v: &[u8]) -> Self {
+            pub fn from_slice_pad(v: &[$t]) -> Self {
                 assert!(v.len() <= $l);
-                let mut tmp = [0u8; $l];
+                let mut tmp = [<$t>::default(); $l];
                 for i in 0..v.len() {
                     tmp[i] = v[i];
                 }
@@ -242,7 +242,7 @@ macro_rules! bytes {
             }
             /// This takes an arbitrary length slice and takes at most $l bytes
             /// zero-padded into $name.
-            pub fn from_slice_lazy(v: &[u8]) -> Self {
+            pub fn from_slice_lazy(v: &[$t]) -> Self {
                 let mut tmp = [0u8; $l];
                 for i in 0..min($l, v.len()) {
                     tmp[i] = v[i];
@@ -251,19 +251,19 @@ macro_rules! bytes {
             }
             /// This takes an arbitrary length vec and takes at most $l bytes
             /// zero-padded into $name.
-            pub fn from_vec_lazy(v: Vec<u8>) -> Self {
-                let mut tmp = [0u8; $l];
+            pub fn from_vec_lazy(v: Vec<$t>) -> Self {
+                let mut tmp = [<$t>::default(); $l];
                 for i in 0..min($l, v.len()) {
                     tmp[i] = v[i];
                 }
                 Self(tmp.clone())
             }
-            pub fn update_raw(&mut self, start: usize, v: &[u8]) {
+            pub fn update_raw(&mut self, start: usize, v: &[$t]) {
                 for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
                 }
             }
-            pub fn update_vec(&mut self, start: usize, v: Vec<u8>) {
+            pub fn update_vec(&mut self, start: usize, v: Vec<$t>) {
                 for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
                 }
@@ -277,14 +277,14 @@ macro_rules! bytes {
             /// Panics if `self` is too short `start-end` is not equal to the result length.
             pub fn get<A>(&self, r: Range<usize>) -> A
             where
-                A: Default + AsMut<[u8]>,
+                A: Default + AsMut<[$t]>,
             {
                 let mut a = A::default();
-                <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[r]);
+                <A as AsMut<[$t]>>::as_mut(&mut a).copy_from_slice(&self[r]);
                 a
             }
 
-            pub fn from_u64_slice_le(x: &[u64]) -> Self {
+            fn from_u64_slice_le(x: &[u64]) -> Self {
                 let mut result: [u8; $l] = [0; $l];
                 for i in (0..x.len()).rev() {
                     result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
@@ -314,55 +314,43 @@ macro_rules! bytes {
                 $name::new()
             }
         }
-        impl AsMut<[u8]> for $name {
-            fn as_mut(&mut self) -> &mut [u8] {
+        impl AsMut<[$t]> for $name {
+            fn as_mut(&mut self) -> &mut [$t] {
                 &mut self.0
             }
         }
-        impl SeqTrait<u8> for $name {
-            fn raw<'a>(&'a self) -> &'a [u8] {
+        impl SeqTrait<$t> for $name {
+            fn raw<'a>(&'a self) -> &'a [$t] {
                 &self.0
             }
             fn len(&self) -> usize {
                 $l
             }
-            fn iter(&self) -> std::slice::Iter<u8> {
+            fn iter(&self) -> std::slice::Iter<$t> {
                 self.0.iter()
             }
         }
 
         impl Index<usize> for $name {
-            type Output = u8;
-            fn index(&self, i: usize) -> &u8 {
+            type Output = $t;
+            fn index(&self, i: usize) -> &$t {
                 &self.0[i]
             }
         }
-        impl Index<u8> for $name {
-            type Output = u8;
-            fn index(&self, i: u8) -> &u8 {
-                &self.0[usize::from(i)]
-            }
-        }
-        impl Index<i32> for $name {
-            type Output = u8;
-            fn index(&self, i: i32) -> &u8 {
-                &self.0[i as usize] // TODO: this conversion might be bad
-            }
-        }
         impl IndexMut<usize> for $name {
-            fn index_mut(&mut self, i: usize) -> &mut u8 {
+            fn index_mut(&mut self, i: usize) -> &mut $t {
                 &mut self.0[i]
             }
         }
         impl Index<Range<usize>> for $name {
-            type Output = [u8];
-            fn index(&self, r: Range<usize>) -> &[u8] {
+            type Output = [$t];
+            fn index(&self, r: Range<usize>) -> &[$t] {
                 &self.0[r]
             }
         }
         impl Index<RangeFull> for $name {
-            type Output = [u8];
-            fn index(&self, r: RangeFull) -> &[u8] {
+            type Output = [$t];
+            fn index(&self, r: RangeFull) -> &[$t] {
                 &self.0[r]
             }
         }
@@ -376,28 +364,28 @@ macro_rules! bytes {
                 self.0[..] == other.0[..]
             }
         }
-        impl From<Vec<u8>> for $name {
-            fn from(x: Vec<u8>) -> $name {
+        impl From<Vec<$t>> for $name {
+            fn from(x: Vec<$t>) -> $name {
                 assert!(x.len() <= $l);
-                let mut tmp = [0u8; $l];
+                let mut tmp = [<$t>::default(); $l];
                 for (i, e) in x.iter().enumerate() {
                     tmp[i] = *e;
                 }
                 $name(tmp.clone())
             }
         }
-        impl From<$name> for Vec<u8> {
-            fn from(x: $name) -> Vec<u8> {
+        impl From<$name> for Vec<$t> {
+            fn from(x: $name) -> Vec<$t> {
                 x.0.to_vec()
             }
         }
-        impl From<&[u8]> for $name {
-            fn from(x: &[u8]) -> $name {
+        impl From<&[$t]> for $name {
+            fn from(x: &[$t]) -> $name {
                 $name::from_slice_pad(x)
             }
         }
-        impl From<$name> for [u8; $l] {
-            fn from(x: $name) -> [u8; $l] {
+        impl From<$name> for [$t; $l] {
+            fn from(x: $name) -> [$t; $l] {
                 x.0
             }
         }
