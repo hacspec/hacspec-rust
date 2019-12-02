@@ -29,14 +29,6 @@ macro_rules! hacspec_crates {
     };
 }
 
-#[macro_export]
-macro_rules! random_bytes {
-    ($n:ident, $l:expr) => {
-        let mut $n = [0u8; $l];
-        $n.copy_from_slice(&get_random_bytes($l)[..$l]);
-    };
-}
-
 pub fn get_random_bytes(l: usize) -> Vec<u8> {
     (0..l).map(|_| rand::random::<u8>()).collect()
 }
@@ -98,31 +90,11 @@ impl Bytes {
     pub fn new_len(l: usize) -> Self {
         Self { b: vec![0u8; l] }
     }
-    pub fn random(l: usize) -> Self {
-        Self {
-            b: get_random_bytes(l),
-        }
-    }
     pub fn is_empty(&self) -> bool {
         self.b.is_empty()
     }
-    pub fn from_vec(v: Vec<u8>) -> Self {
-        Self { b: v.clone() }
-    }
     pub fn from_array(v: &[u8]) -> Self {
         Self { b: v.to_vec() }
-    }
-    pub fn to_slice(&self) -> &[u8] {
-        self.b.as_slice()
-    }
-    pub fn extend(&mut self, v: Bytes) {
-        self.b.extend(v.b.clone());
-    }
-    pub fn extend_from_slice(&mut self, v: &[u8]) {
-        self.b.extend(v);
-    }
-    pub fn push(&mut self, v: u8) {
-        self.b.push(v);
     }
     pub fn update_raw(&mut self, start: usize, v: &[u8]) {
         assert!(self.len() >= start + v.len());
@@ -142,24 +114,6 @@ impl Bytes {
             self[start + i] = *b;
         }
     }
-    /// **Panics** if `self.len()` is not equal to the result length.
-    pub fn to_array<A>(&self) -> A
-    where
-        A: Default + AsMut<[u8]>,
-    {
-        let mut a = A::default();
-        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[..]);
-        a
-    }
-    /// **Panics** if `self` is too short `start-end` is not equal to the result length.
-    pub fn to_array_part<A>(&self, start: usize, end: usize) -> A
-    where
-        A: Default + AsMut<[u8]>,
-    {
-        let mut a = A::default();
-        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[start..end]);
-        a
-    }
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
     pub fn get<A>(&self, r: Range<usize>) -> A
     where
@@ -175,13 +129,6 @@ impl Bytes {
             res.push(Bytes::from_array(&self[i..min(i + block_size, self.len())]));
         }
         res
-    }
-    /// Get bytes as u32.
-    /// # PANICS
-    /// Panics if self.len() != 4.
-    pub fn to_u32l(&self) -> u32 {
-        assert!(self.len() == 4);
-        (self[3] as u32) << 24 | (self[2] as u32) << 16 | (self[1] as u32) << 8 | (self[0] as u32)
     }
     /// Read a u32 into a byte array.
     pub fn from_u32l(x: u32) -> Self {
@@ -251,11 +198,6 @@ impl IndexMut<Range<usize>> for Bytes {
         &mut self.b[r]
     }
 }
-impl From<&[u8]> for Bytes {
-    fn from(x: &[u8]) -> Bytes {
-        Self { b: x.to_vec() }
-    }
-}
 impl From<Vec<u8>> for Bytes {
     fn from(x: Vec<u8>) -> Bytes {
         Self { b: x.clone() }
@@ -289,22 +231,8 @@ macro_rules! bytes {
             pub fn new() -> Self {
                 Self([0u8; $l])
             }
-            pub fn capacity() -> usize {
-                $l
-            }
-            pub fn random() -> Self {
-                let mut tmp = [0u8; $l];
-                tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
-                Self(tmp.clone())
-            }
             pub fn from_array(v: [u8; $l]) -> Self {
                 Self(v.clone())
-            }
-            pub fn from_slice(v: &[u8]) -> Self {
-                assert!(v.len() == $l);
-                let mut tmp = [0u8; $l];
-                tmp.copy_from_slice(v);
-                Self(tmp.clone())
             }
             pub fn from_slice_pad(v: &[u8]) -> Self {
                 assert!(v.len() <= $l);
@@ -337,11 +265,6 @@ macro_rules! bytes {
                     self[start + i] = *b;
                 }
             }
-            pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
-                for (i, b) in v.raw().iter().enumerate() {
-                    self[start + i] = *b;
-                }
-            }
             pub fn update_vec(&mut self, start: usize, v: Vec<u8>) {
                 for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
@@ -349,12 +272,6 @@ macro_rules! bytes {
             }
             pub fn len(&self) -> usize {
                 $l
-            }
-            pub fn word(&self, start: usize) -> [u8; 4] {
-                assert!(self.len() >= start + 4);
-                let mut res = [0u8; 4];
-                res.copy_from_slice(&self[start..start + 4]);
-                res
             }
             /// Get an array for the given range `r`.
             ///
@@ -476,11 +393,6 @@ macro_rules! bytes {
                 x.0.to_vec()
             }
         }
-        impl From<[u8; $l]> for $name {
-            fn from(x: [u8; $l]) -> $name {
-                $name(x.clone())
-            }
-        }
         impl From<&[u8]> for $name {
             fn from(x: &[u8]) -> $name {
                 $name::from_slice_pad(x)
@@ -489,15 +401,6 @@ macro_rules! bytes {
         impl From<$name> for [u8; $l] {
             fn from(x: $name) -> [u8; $l] {
                 x.0
-            }
-        }
-        /// Build this array from a slice of the appropriate length of a u64s (little-endian).
-        /// # PANICS
-        /// Panics if the slice doesn't fit into this array.
-        impl From<&[u64]> for $name {
-            fn from(x: &[u64]) -> $name {
-                assert!($l == x.len() * 8);
-                $name::from_u64_slice_le(x)
             }
         }
         /// Build this array from an array of the appropriate length of a u64s (little-endian).
@@ -516,28 +419,6 @@ macro_rules! bytes {
         }
     };
 }
-
-// Some convenience functions.
-// TODO: Do we really need them?
-
-macro_rules! array_to_vec {
-    ($l:expr,$name:ident) => {
-        struct $name([u8; $l]);
-        impl From<$name> for Vec<u8> {
-            fn from(x: $name) -> Vec<u8> {
-                x.0.to_vec()
-            }
-        }
-        impl From<[u8; $l]> for $name {
-            fn from(x: [u8; $l]) -> $name {
-                $name(x)
-            }
-        }
-    };
-}
-array_to_vec!(2, Array2);
-array_to_vec!(4, Array4);
-array_to_vec!(8, Array8);
 
 pub fn to_array<A, T>(slice: &[T]) -> A
 where
