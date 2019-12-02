@@ -5,8 +5,8 @@ extern crate rand;
 
 use std::cmp::min;
 use std::convert::AsMut;
-use std::ops::{Index, IndexMut, Range, RangeFull};
 use std::num::ParseIntError;
+use std::ops::{Index, IndexMut, Range, RangeFull};
 
 #[macro_export]
 macro_rules! hacspec_imports {
@@ -29,25 +29,7 @@ macro_rules! hacspec_crates {
     };
 }
 
-pub fn get_random_bytes(l: usize) -> Vec<u8> {
-    (0..l).map(|_| rand::random::<u8>()).collect()
-}
-
-pub fn to_u32l(x: &[u8]) -> u32 {
-    assert!(x.len() == 4);
-    u32::from_le_bytes(to_array(&x[0..4]))
-}
-
-pub fn from_u32l(x: u32) -> (u8, u8, u8, u8) {
-    (
-        ((x & 0xFF000000) >> 24) as u8,
-        ((x & 0xFF0000) >> 16) as u8,
-        ((x & 0xFF00) >> 8) as u8,
-        (x & 0xFF) as u8,
-    )
-}
-
-pub fn hex_string_to_bytes(s: &str) -> Vec<u8> {
+fn hex_string_to_bytes(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0);
     let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
         .step_by(2)
@@ -57,58 +39,50 @@ pub fn hex_string_to_bytes(s: &str) -> Vec<u8> {
 }
 
 /// Common trait for all byte arrays.
-pub trait ByteArray {
-    fn raw<'a>(&'a self) -> &'a [u8];
+pub trait SeqTrait<T: Copy> {
+    fn raw<'a>(&'a self) -> &'a [T];
     fn len(&self) -> usize;
-    fn iter(&self) -> std::slice::Iter<u8>;
+    fn iter(&self) -> std::slice::Iter<T>;
 }
 
 // ======================== Variable length arrays ========================== //
 
-#[derive(Copy, Clone, Debug)]
-pub struct ByteSlice<'a> {
-    b: &'a[u8]
-}
-impl<'a> ByteSlice<'a> {
-    fn new(b_in: &'a Bytes) -> ByteSlice<'a> {
-        Self {
-            b: &b_in[..]
-        }
-    }
-}
-
 /// Variable length byte arrays.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Bytes {
-    b: Vec<u8>,
+pub struct Seq<T: Copy> {
+    b: Vec<T>,
 }
 
-impl Bytes {
-    pub fn get_slice<'a>(&'a self) -> ByteSlice<'a> {
-        ByteSlice::new(&self)
-    }
+pub type Bytes = Seq<u8>;
+
+impl<T: Copy + Default> Seq<T> {
     pub fn new_len(l: usize) -> Self {
-        Self { b: vec![0u8; l] }
+        Self {
+            b: vec![T::default(); l],
+        }
     }
     pub fn is_empty(&self) -> bool {
         self.b.is_empty()
     }
-    pub fn from_array(v: &[u8]) -> Self {
+    pub fn from_array(v: &[T]) -> Self {
         Self { b: v.to_vec() }
     }
-    pub fn update_raw(&mut self, start: usize, v: &[u8]) {
+    pub fn len(&self) -> usize {
+        self.b.len()
+    }
+    pub fn update_raw(&mut self, start: usize, v: &[T]) {
         assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
     }
-    pub fn update_vec(&mut self, start: usize, v: Vec<u8>) {
+    pub fn update_vec(&mut self, start: usize, v: Vec<T>) {
         assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
     }
-    pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
+    pub fn update(&mut self, start: usize, v: &dyn SeqTrait<T>) {
         assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
@@ -117,20 +91,22 @@ impl Bytes {
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
     pub fn get<A>(&self, r: Range<usize>) -> A
     where
-        A: Default + AsMut<[u8]>,
+        A: Default + AsMut<[T]>,
     {
         let mut a = A::default();
-        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[r]);
+        <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(&self[r]);
         a
     }
-    pub fn split(&self, block_size: usize) -> Vec<Bytes> {
-        let mut res = Vec::<Bytes>::new();
+    pub fn split(&self, block_size: usize) -> Vec<Seq<T>> {
+        let mut res = Vec::<Seq<T>>::new();
         for i in (0..self.len()).step_by(block_size) {
-            res.push(Bytes::from_array(&self[i..min(i + block_size, self.len())]));
+            res.push(Seq::from_array(&self[i..min(i + block_size, self.len())]));
         }
         res
     }
-    /// Read a u32 into a byte array.
+}
+
+impl Seq<u8> {
     pub fn from_u32l(x: u32) -> Self {
         Bytes {
             b: vec![
@@ -141,6 +117,7 @@ impl Bytes {
             ],
         }
     }
+
     /// Get a u128 representing at most the first 16 byte of this byte vector.
     /// # PANICS
     /// Panics if there's nothing to convert, i.e. self.b.is_empty().
@@ -154,64 +131,76 @@ impl Bytes {
     }
 }
 
-impl ByteArray for Bytes {
-    fn raw<'a>(&'a self) -> &'a [u8] {
+/// Read a u32 into a byte array.
+pub fn byte_seq_from_u32l(x: u32) -> Seq<u8> {
+    Seq {
+        b: vec![
+            ((x & 0xFF000000) >> 24) as u8,
+            ((x & 0xFF0000) >> 16) as u8,
+            ((x & 0xFF00) >> 8) as u8,
+            (x & 0xFF) as u8,
+        ],
+    }
+}
+
+impl<T: Copy> SeqTrait<T> for Seq<T> {
+    fn raw<'a>(&'a self) -> &'a [T] {
         &self.b
     }
     fn len(&self) -> usize {
         self.b.len()
     }
-    fn iter(&self) -> std::slice::Iter<u8> {
+    fn iter(&self) -> std::slice::Iter<T> {
         self.b.iter()
     }
 }
 
-impl Index<usize> for Bytes {
-    type Output = u8;
-    fn index(&self, i: usize) -> &u8 {
+impl<T: Copy> Index<usize> for Seq<T> {
+    type Output = T;
+    fn index(&self, i: usize) -> &T {
         &self.b[i]
     }
 }
 
-impl IndexMut<usize> for Bytes {
-    fn index_mut(&mut self, i: usize) -> &mut u8 {
+impl<T: Copy> IndexMut<usize> for Seq<T> {
+    fn index_mut(&mut self, i: usize) -> &mut T {
         &mut self.b[i]
     }
 }
 
-impl Index<Range<usize>> for Bytes {
-    type Output = [u8];
-    fn index(&self, r: Range<usize>) -> &[u8] {
+impl<T: Copy> Index<Range<usize>> for Seq<T> {
+    type Output = [T];
+    fn index(&self, r: Range<usize>) -> &[T] {
         &self.b[r]
     }
 }
 
-impl Index<RangeFull> for Bytes {
-    type Output = [u8];
-    fn index(&self, _r: RangeFull) -> &[u8] {
+impl<T: Copy> Index<RangeFull> for Seq<T> {
+    type Output = [T];
+    fn index(&self, _r: RangeFull) -> &[T] {
         &self.b[..]
     }
 }
 
-impl IndexMut<Range<usize>> for Bytes {
-    fn index_mut(&mut self, r: Range<usize>) -> &mut [u8] {
+impl<T: Copy> IndexMut<Range<usize>> for Seq<T> {
+    fn index_mut(&mut self, r: Range<usize>) -> &mut [T] {
         &mut self.b[r]
     }
 }
-impl From<Vec<u8>> for Bytes {
-    fn from(x: Vec<u8>) -> Bytes {
+impl<T: Copy> From<Vec<T>> for Seq<T> {
+    fn from(x: Vec<T>) -> Seq<T> {
         Self { b: x.clone() }
     }
 }
-impl Into<Vec<u8>> for Bytes {
-    fn into(self) -> Vec<u8> {
+impl<T: Copy> Into<Vec<T>> for Seq<T> {
+    fn into(self) -> Vec<T> {
         self.b.to_vec()
     }
 }
 /// Read hex string to Bytes.
-impl From<&str> for Bytes {
-    fn from(s: &str) -> Bytes {
-        Bytes::from(hex_string_to_bytes(s))
+impl From<&str> for Seq<u8> {
+    fn from(s: &str) -> Seq<u8> {
+        Seq::from(hex_string_to_bytes(s))
     }
 }
 
@@ -228,6 +217,15 @@ macro_rules! bytes {
         pub struct $name([u8; $l]);
 
         impl $name {
+            fn hex_string_to_bytes(s: &str) -> Vec<u8> {
+                assert!(s.len() % 2 == 0);
+                let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
+                    .step_by(2)
+                    .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+                    .collect();
+                b.expect("Error parsing hex string")
+            }
+
             pub fn new() -> Self {
                 Self([0u8; $l])
             }
@@ -321,7 +319,7 @@ macro_rules! bytes {
                 &mut self.0
             }
         }
-        impl ByteArray for $name {
+        impl SeqTrait<u8> for $name {
             fn raw<'a>(&'a self) -> &'a [u8] {
                 &self.0
             }
@@ -414,7 +412,7 @@ macro_rules! bytes {
         /// Read hex string to bytes.
         impl From<&str> for $name {
             fn from(s: &str) -> $name {
-                $name::from(hex_string_to_bytes(s))
+                $name::from($name::hex_string_to_bytes(s))
             }
         }
     };
