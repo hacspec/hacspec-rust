@@ -12,6 +12,7 @@ use std::ops::{Index, IndexMut, Range, RangeFull};
 macro_rules! hacspec_imports {
     () => {
         use num::{BigUint, Num, Zero};
+        use rand;
         use std::num::ParseIntError;
         use std::ops::*;
         use std::{cmp::min, cmp::PartialEq, fmt};
@@ -24,6 +25,7 @@ macro_rules! hacspec_imports {
 macro_rules! hacspec_crates {
     () => {
         extern crate num;
+        extern crate rand;
         extern crate uint;
         extern crate wrapping_arithmetic;
     };
@@ -103,6 +105,18 @@ impl<T: Copy + Default> Seq<T> {
             res.push(Seq::from_array(&self[i..min(i + block_size, self.len())]));
         }
         res
+    }
+}
+
+impl<T: Copy> Seq<T> where rand::distributions::Standard: rand::distributions::Distribution<T>{
+    fn get_random_vec(l: usize) -> Vec<T> {
+        (0..l).map(|_| rand::random::<T>()).collect()
+    }
+
+    pub fn random(l: usize) -> Self {
+        Self {
+            b: Seq::get_random_vec(l),
+        }
     }
 }
 
@@ -211,15 +225,6 @@ macro_rules! bytes {
     ($name:ident, $l:expr) => {
         array!($name, $l, u8);
         impl $name {
-            fn hex_string_to_bytes(s: &str) -> Vec<u8> {
-                assert!(s.len() % 2 == 0);
-                let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
-                    .step_by(2)
-                    .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-                    .collect();
-                b.expect("Error parsing hex string")
-            }
-
             fn from_u64_slice_le(x: &[u64]) -> Self {
                 let mut result: [u8; $l] = [0; $l];
                 for i in (0..x.len()).rev() {
@@ -252,7 +257,6 @@ macro_rules! bytes {
             {
                 $name::from(&f.to_bytes_le()[..])
             }
-
         }
         /// Build this array from an array of the appropriate length of a u64s (little-endian).
         /// # PANICS
@@ -262,15 +266,8 @@ macro_rules! bytes {
                 $name::from_u64_slice_le(&x)
             }
         }
-        /// Read hex string to bytes.
-        impl From<&str> for $name {
-            fn from(s: &str) -> $name {
-                $name::from($name::hex_string_to_bytes(s))
-            }
-        }
-    }
+    };
 }
-
 
 #[macro_export]
 macro_rules! array {
@@ -280,11 +277,9 @@ macro_rules! array {
         /// compile time there's no generic fixed length byte array here.
         /// Use this to define the fixed length byte arrays needed in your code.
         #[derive(Clone, Copy)]
-        pub struct $name([$t; $l]);
+        pub struct $name(pub [$t; $l]);
 
         impl $name {
-
-
             pub fn new() -> Self {
                 Self([<$t>::default(); $l])
             }
@@ -427,6 +422,40 @@ macro_rules! array {
         impl From<$name> for [$t; $l] {
             fn from(x: $name) -> [$t; $l] {
                 x.0
+            }
+        }
+
+        impl $name {
+            fn hex_string_to_vec(s: &str) -> Vec<$t> {
+                assert!(s.len() % std::mem::size_of::<$t>() == 0);
+                let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
+                    .step_by(2)
+                    .map(|i| <$t>::from_str_radix(&s[i..i + 2], 16))
+                    .collect();
+                b.expect("Error parsing hex string")
+            }
+
+            fn get_random_vec(l: usize) -> Vec<$t> {
+                (0..l).map(|_| rand::random::<$t>()).collect()
+            }
+
+            pub fn random() -> Self {
+                let mut tmp = [<$t>::default(); $l];
+                tmp.copy_from_slice(&$name::get_random_vec($l)[..$l]);
+                Self(tmp.clone())
+            }
+        }
+
+        /// Read hex string to Bytes.
+        impl From<&str> for $name {
+            fn from(s: &str) -> $name {
+                let v = $name::hex_string_to_vec(s);
+                let mut o = $name::new();
+                assert!(v.len() == $l);
+                for i in 0..$l {
+                    o[i] = v[i]
+                }
+                o
             }
         }
     };
