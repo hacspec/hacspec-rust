@@ -29,7 +29,6 @@ macro_rules! hacspec_imports {
     };
 }
 
-
 hacspec_crates!();
 
 hacspec_imports!();
@@ -75,26 +74,21 @@ impl<T: Copy + Default> Seq<T> {
     pub fn len(&self) -> usize {
         self.b.len()
     }
-    pub fn update_raw(&mut self, start: usize, v: &[T]) {
-        assert!(self.len() >= start + v.len());
-        for (i, b) in v.iter().enumerate() {
-            self[start + i] = *b;
-        }
-    }
-    pub fn update_vec(&mut self, start: usize, v: Vec<T>) {
-        assert!(self.len() >= start + v.len());
-        for (i, b) in v.iter().enumerate() {
-            self[start + i] = *b;
-        }
-    }
     pub fn update(&mut self, start: usize, v: &dyn SeqTrait<T>) {
         assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
     }
+    pub fn update_sub(&mut self, start_out: usize, v: &dyn SeqTrait<T>, start_in: usize, len: usize) {
+        assert!(self.len() >= start_out + len);
+        assert!(v.len() >= start_in + len);
+        for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
+            self[start_out + i] = *b;
+        }
+    }
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
-    pub fn get<A : SeqTrait<T>>(&self, r: Range<usize>) -> A
+    pub fn get<A: SeqTrait<T>>(&self, r: Range<usize>) -> A
     where
         A: Default + AsMut<[T]>,
     {
@@ -112,7 +106,10 @@ impl<T: Copy + Default> Seq<T> {
     }
 }
 
-impl<T: Copy> Seq<T> where rand::distributions::Standard: rand::distributions::Distribution<T>{
+impl<T: Copy> Seq<T>
+where
+    rand::distributions::Standard: rand::distributions::Distribution<T>,
+{
     fn get_random_vec(l: usize) -> Vec<T> {
         (0..l).map(|_| rand::random::<T>()).collect()
     }
@@ -316,14 +313,17 @@ macro_rules! array {
                 }
                 Self(tmp.clone())
             }
-            pub fn update_raw(&mut self, start: usize, v: &[$t]) {
+            pub fn update(&mut self, start: usize, v: &dyn SeqTrait<$t>) {
+                assert!(self.len() >= start + v.len());
                 for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
                 }
             }
-            pub fn update_vec(&mut self, start: usize, v: Vec<$t>) {
-                for (i, b) in v.iter().enumerate() {
-                    self[start + i] = *b;
+            pub fn update_sub(&mut self, start_out: usize, v: &dyn SeqTrait<$t>, start_in: usize, len: usize) {
+                assert!(self.len() >= start_out + len);
+                assert!(v.len() >= start_in + len);
+                for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
+                    self[start_out + i] = *b;
                 }
             }
             pub fn len(&self) -> usize {
@@ -465,7 +465,7 @@ macro_rules! array {
     };
 }
 
-pub fn to_array<A : SeqTrait<T>, T>(slice: &[T]) -> A
+pub fn to_array<A: SeqTrait<T>, T>(slice: &[T]) -> A
 where
     A: Default + AsMut<[T]>,
     T: Copy,
@@ -477,11 +477,24 @@ where
 
 bytes!(U32Word, 4);
 bytes!(U128Word, 16);
+bytes!(U64Word, 8);
 
 pub fn u32_from_le_bytes(s: U32Word) -> u32 {
     u32::from_le_bytes(s.0)
 }
 
+pub fn u32_to_be_bytes(x: u32) -> U32Word {
+    U32Word(x.to_be_bytes())
+}
+
 pub fn u128_from_le_bytes(s: U128Word) -> u128 {
     u128::from_le_bytes(s.0)
+}
+
+pub fn u64_to_be_bytes(x: u64) -> U64Word {
+    U64Word(x.to_be_bytes())
+}
+
+pub fn u64_to_le_bytes(x: u64) -> U64Word {
+    U64Word(x.to_le_bytes())
 }
