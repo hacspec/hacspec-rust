@@ -17,14 +17,33 @@ fn test_bytes() {
 
 #[test]
 fn test_vlbytes() {
-    let x = Bytes::from_array(&[0, 1, 2, 3, 4, 5]);
+    vlbytes!(x, x_, "000102030405");
+    // let x_ = Bytes::from_array(&[0, 1, 2, 3, 4, 5]);
+    // let x = x_.get_slice();
 
     fn sth(b: ByteSlice) {
         println!("do: {:?}", b);
     }
 
-    let x_slice = x.get_slice();
-    // Don't use x behind this point.
-    sth(x_slice);
-    println!("{:?}", x_slice);
+    sth(x);
+    println!("{:?}", x);
+}
+
+#[test]
+fn test_bytes_conversion() {
+    bytes!(TestBytes, 77);
+    bytes!(OtherBytes, 77);
+
+    fn do_test(b: TestBytes) {
+        println!("TestBytes: {:?}", b);
+    }
+    fn do_other(b: OtherBytes) {
+        println!("OtherBytes: {:?}", b);
+    }
+
+    let t = TestBytes::new();
+    let o = OtherBytes::new();
+
+    do_test(TestBytes::from_byte_array(&o));
+    do_other(OtherBytes::from_byte_array(&t));
 }

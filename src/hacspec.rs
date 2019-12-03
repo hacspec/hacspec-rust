@@ -26,6 +26,7 @@ macro_rules! hacspec_crates {
         extern crate num;
         extern crate uint;
         extern crate wrapping_arithmetic;
+        extern crate paste;
     };
 }
 
@@ -73,7 +74,7 @@ pub trait ByteArray {
 
 // ======================== Variable length arrays ========================== //
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct ByteSlice<'a> {
     b: &'a[u8]
 }
@@ -83,6 +84,35 @@ impl<'a> ByteSlice<'a> {
             b: &b_in[..]
         }
     }
+    pub fn len(&self) -> usize {
+        self.b.len()
+    }
+    /// **Panics** if `self` is too short `start-end` is not equal to the result length.
+    pub fn get<A>(&self, r: Range<usize>) -> A
+    where
+        A: Default + AsMut<[u8]>,
+    {
+        let mut a = A::default();
+        <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self.b[r]);
+        a
+    }
+    pub fn iter(&self) -> std::slice::Iter<u8> {
+        self.b.iter()
+    }
+}
+impl<'a> Index<Range<usize>> for ByteSlice<'a> {
+    type Output = [u8];
+    fn index(&self, r: Range<usize>) -> &[u8] {
+        &self.b[r]
+    }
+}
+
+#[macro_export]
+macro_rules! vlbytes {
+    ($name:ident,$bytes_name:ident,$from:expr) => (
+        let $bytes_name = Bytes::from($from);
+        let $name = $bytes_name.get_slice();
+    );
 }
 
 /// Variable length byte arrays.
@@ -137,6 +167,12 @@ impl Bytes {
         }
     }
     pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
+        assert!(self.len() >= start + v.len());
+        for (i, b) in v.iter().enumerate() {
+            self[start + i] = *b;
+        }
+    }
+    pub fn update_slice(&mut self, start: usize, v: ByteSlice) {
         assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
@@ -329,6 +365,14 @@ macro_rules! bytes {
                 let mut tmp = [0u8; $l];
                 for i in 0..min($l, v.len()) {
                     tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
+            pub fn from_byte_array(v: &dyn ByteArray) -> Self {
+                assert_eq!($l, v.len());
+                let mut tmp = [0u8; $l];
+                for (i, b) in v.raw().iter().enumerate() {
+                    tmp[i] = *b;
                 }
                 Self(tmp.clone())
             }
