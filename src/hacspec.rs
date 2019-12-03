@@ -207,6 +207,72 @@ impl From<&str> for Seq<u8> {
 // ========================== Fixed length arrays =========================== //
 
 #[macro_export]
+macro_rules! bytes {
+    ($name:ident, $l:expr) => {
+        array!($name, $l, u8);
+        impl $name {
+            fn hex_string_to_bytes(s: &str) -> Vec<u8> {
+                assert!(s.len() % 2 == 0);
+                let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
+                    .step_by(2)
+                    .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+                    .collect();
+                b.expect("Error parsing hex string")
+            }
+
+            fn from_u64_slice_le(x: &[u64]) -> Self {
+                let mut result: [u8; $l] = [0; $l];
+                for i in (0..x.len()).rev() {
+                    result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
+                    result[1 + (i * 8)] = ((x[i] & 0xFF00u64) >> 8) as u8;
+                    result[2 + (i * 8)] = ((x[i] & 0xFF0000u64) >> 16) as u8;
+                    result[3 + (i * 8)] = ((x[i] & 0xFF000000u64) >> 24) as u8;
+                    result[4 + (i * 8)] = ((x[i] & 0xFF00000000u64) >> 32) as u8;
+                    result[5 + (i * 8)] = ((x[i] & 0xFF0000000000u64) >> 40) as u8;
+                    result[6 + (i * 8)] = ((x[i] & 0xFF000000000000u64) >> 48) as u8;
+                    result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
+                }
+                Self(result.clone())
+            }
+
+            fn to_u128_le(self) -> u128 {
+                let mut x = [0u8; 16];
+                assert!(self.len() == 16);
+                for i in 0..16 {
+                    x[i] = self[i]
+                }
+                u128::from_le_bytes(x)
+            }
+
+            /// Convert a `Field` to a byte array (little endian).
+            /// TODO: The `From` trait doesn't work for this for some reason.
+            pub fn from_field<T>(f: T) -> Self
+            where
+                T: Field,
+            {
+                $name::from(&f.to_bytes_le()[..])
+            }
+
+        }
+        /// Build this array from an array of the appropriate length of a u64s (little-endian).
+        /// # PANICS
+        /// Panics if the slice doesn't fit into this array.
+        impl From<[u64; $l / 8]> for $name {
+            fn from(x: [u64; $l / 8]) -> $name {
+                $name::from_u64_slice_le(&x)
+            }
+        }
+        /// Read hex string to bytes.
+        impl From<&str> for $name {
+            fn from(s: &str) -> $name {
+                $name::from($name::hex_string_to_bytes(s))
+            }
+        }
+    }
+}
+
+
+#[macro_export]
 macro_rules! array {
     ($name:ident,$l:expr,$t:ty) => {
         /// Fixed length byte array.
@@ -217,17 +283,10 @@ macro_rules! array {
         pub struct $name([$t; $l]);
 
         impl $name {
-            fn hex_string_to_bytes(s: &str) -> Vec<$t> {
-                assert!(s.len() % 2 == 0);
-                let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
-                    .step_by(2)
-                    .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-                    .collect();
-                b.expect("Error parsing hex string")
-            }
+
 
             pub fn new() -> Self {
-                Self([0u8; $l])
+                Self([<$t>::default(); $l])
             }
             pub fn from_array(v: [$t; $l]) -> Self {
                 Self(v.clone())
@@ -243,7 +302,7 @@ macro_rules! array {
             /// This takes an arbitrary length slice and takes at most $l bytes
             /// zero-padded into $name.
             pub fn from_slice_lazy(v: &[$t]) -> Self {
-                let mut tmp = [0u8; $l];
+                let mut tmp = [<$t>::default(); $l];
                 for i in 0..min($l, v.len()) {
                     tmp[i] = v[i];
                 }
@@ -282,30 +341,6 @@ macro_rules! array {
                 let mut a = A::default();
                 <A as AsMut<[$t]>>::as_mut(&mut a).copy_from_slice(&self[r]);
                 a
-            }
-
-            fn from_u64_slice_le(x: &[u64]) -> Self {
-                let mut result: [u8; $l] = [0; $l];
-                for i in (0..x.len()).rev() {
-                    result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
-                    result[1 + (i * 8)] = ((x[i] & 0xFF00u64) >> 8) as u8;
-                    result[2 + (i * 8)] = ((x[i] & 0xFF0000u64) >> 16) as u8;
-                    result[3 + (i * 8)] = ((x[i] & 0xFF000000u64) >> 24) as u8;
-                    result[4 + (i * 8)] = ((x[i] & 0xFF00000000u64) >> 32) as u8;
-                    result[5 + (i * 8)] = ((x[i] & 0xFF0000000000u64) >> 40) as u8;
-                    result[6 + (i * 8)] = ((x[i] & 0xFF000000000000u64) >> 48) as u8;
-                    result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
-                }
-                Self(result.clone())
-            }
-
-            /// Convert a `Field` to a byte array (little endian).
-            /// TODO: The `From` trait doesn't work for this for some reason.
-            pub fn from_field<T>(f: T) -> Self
-            where
-                T: Field,
-            {
-                $name::from(&f.to_bytes_le()[..])
             }
         }
 
@@ -348,6 +383,11 @@ macro_rules! array {
                 &self.0[r]
             }
         }
+        impl IndexMut<Range<usize>> for $name {
+            fn index_mut(&mut self, r: Range<usize>) -> &mut [$t] {
+                &mut self.0[r]
+            }
+        }
         impl Index<RangeFull> for $name {
             type Output = [$t];
             fn index(&self, r: RangeFull) -> &[$t] {
@@ -387,20 +427,6 @@ macro_rules! array {
         impl From<$name> for [$t; $l] {
             fn from(x: $name) -> [$t; $l] {
                 x.0
-            }
-        }
-        /// Build this array from an array of the appropriate length of a u64s (little-endian).
-        /// # PANICS
-        /// Panics if the slice doesn't fit into this array.
-        impl From<[u64; $l / 8]> for $name {
-            fn from(x: [u64; $l / 8]) -> $name {
-                $name::from_u64_slice_le(&x)
-            }
-        }
-        /// Read hex string to bytes.
-        impl From<&str> for $name {
-            fn from(s: &str) -> $name {
-                $name::from($name::hex_string_to_bytes(s))
             }
         }
     };
