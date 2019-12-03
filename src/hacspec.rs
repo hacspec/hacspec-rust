@@ -1,26 +1,6 @@
 //!
 //! hacspec Rust library.
 //!
-extern crate rand;
-
-use std::cmp::min;
-use std::convert::AsMut;
-use std::num::ParseIntError;
-use std::ops::{Index, IndexMut, Range, RangeFull};
-
-#[macro_export]
-macro_rules! hacspec_imports {
-    () => {
-        use num::{BigUint, Num, Zero};
-        use rand;
-        use std::num::ParseIntError;
-        use std::ops::*;
-        use std::{cmp::min, cmp::PartialEq, fmt};
-        use uint::{natmod_p::*, traits::*, uint_n::*};
-        use wrapping_arithmetic::wrappit;
-    };
-}
-
 #[macro_export]
 macro_rules! hacspec_crates {
     () => {
@@ -30,6 +10,29 @@ macro_rules! hacspec_crates {
         extern crate wrapping_arithmetic;
     };
 }
+
+#[macro_export]
+macro_rules! hacspec_imports {
+    () => {
+        #[allow(unused_imports)]
+        use num::{BigUint, Num, Zero};
+        #[allow(unused_imports)]
+        use std::num::ParseIntError;
+        #[allow(unused_imports)]
+        use std::ops::*;
+        #[allow(unused_imports)]
+        use std::{cmp::min, cmp::PartialEq, fmt};
+        #[allow(unused_imports)]
+        use uint::{natmod_p::*, traits::*, uint_n::*};
+        #[allow(unused_imports)]
+        use wrapping_arithmetic::wrappit;
+    };
+}
+
+
+hacspec_crates!();
+
+hacspec_imports!();
 
 fn hex_string_to_bytes(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0);
@@ -91,7 +94,7 @@ impl<T: Copy + Default> Seq<T> {
         }
     }
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
-    pub fn get<A>(&self, r: Range<usize>) -> A
+    pub fn get<A : SeqTrait<T>>(&self, r: Range<usize>) -> A
     where
         A: Default + AsMut<[T]>,
     {
@@ -99,6 +102,7 @@ impl<T: Copy + Default> Seq<T> {
         <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(&self[r]);
         a
     }
+
     pub fn split(&self, block_size: usize) -> Vec<Seq<T>> {
         let mut res = Vec::<Seq<T>>::new();
         for i in (0..self.len()).step_by(block_size) {
@@ -240,7 +244,7 @@ macro_rules! bytes {
                 Self(result.clone())
             }
 
-            fn to_u128_le(self) -> u128 {
+            pub fn to_u128_le(self) -> u128 {
                 let mut x = [0u8; 16];
                 assert!(self.len() == 16);
                 for i in 0..16 {
@@ -329,7 +333,7 @@ macro_rules! array {
             ///
             /// #Panics
             /// Panics if `self` is too short `start-end` is not equal to the result length.
-            pub fn get<A>(&self, r: Range<usize>) -> A
+            pub fn get<A: SeqTrait<$t>>(&self, r: Range<usize>) -> A
             where
                 A: Default + AsMut<[$t]>,
             {
@@ -461,7 +465,7 @@ macro_rules! array {
     };
 }
 
-pub fn to_array<A, T>(slice: &[T]) -> A
+pub fn to_array<A : SeqTrait<T>, T>(slice: &[T]) -> A
 where
     A: Default + AsMut<[T]>,
     T: Copy,
@@ -469,4 +473,15 @@ where
     let mut a = A::default();
     <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
     a
+}
+
+bytes!(U32Word, 4);
+bytes!(U128Word, 16);
+
+pub fn u32_from_le_bytes(s: U32Word) -> u32 {
+    u32::from_le_bytes(s.0)
+}
+
+pub fn u128_from_le_bytes(s: U128Word) -> u128 {
+    u128::from_le_bytes(s.0)
 }
