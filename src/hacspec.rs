@@ -182,30 +182,6 @@ macro_rules! bytes {
     ($name:ident, $l:expr) => {
         array!($name, $l, u8);
         impl $name {
-            fn from_u64_slice_le(x: &[u64]) -> Self {
-                let mut result: [u8; $l] = [0; $l];
-                for i in (0..x.len()).rev() {
-                    result[0 + (i * 8)] = (x[i] & 0xFFu64) as u8;
-                    result[1 + (i * 8)] = ((x[i] & 0xFF00u64) >> 8) as u8;
-                    result[2 + (i * 8)] = ((x[i] & 0xFF0000u64) >> 16) as u8;
-                    result[3 + (i * 8)] = ((x[i] & 0xFF000000u64) >> 24) as u8;
-                    result[4 + (i * 8)] = ((x[i] & 0xFF00000000u64) >> 32) as u8;
-                    result[5 + (i * 8)] = ((x[i] & 0xFF0000000000u64) >> 40) as u8;
-                    result[6 + (i * 8)] = ((x[i] & 0xFF000000000000u64) >> 48) as u8;
-                    result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
-                }
-                Self(result.clone())
-            }
-
-            pub fn to_u128_le(self) -> u128 {
-                let mut x = [0u8; 16];
-                assert!(self.len() == 16);
-                for i in 0..16 {
-                    x[i] = self[i]
-                }
-                u128::from_le_bytes(x)
-            }
-
             /// Convert a `Field` to a byte array (little endian).
             /// TODO: The `From` trait doesn't work for this for some reason.
             pub fn from_field<T>(f: T) -> Self
@@ -213,14 +189,6 @@ macro_rules! bytes {
                 T: Field,
             {
                 $name::from(&f.to_bytes_le()[..])
-            }
-        }
-        /// Build this array from an array of the appropriate length of a u64s (little-endian).
-        /// # PANICS
-        /// Panics if the slice doesn't fit into this array.
-        impl From<[u64; $l / 8]> for $name {
-            fn from(x: [u64; $l / 8]) -> $name {
-                $name::from_u64_slice_le(&x)
             }
         }
     };
@@ -236,18 +204,29 @@ macro_rules! array {
         #[derive(Clone, Copy)]
         pub struct $name(pub [$t; $l]);
 
+        impl From<[$t; $l]> for $name {
+            fn from(v: [$t; $l]) -> Self {
+                Self(v.clone())
+            }
+        }
+
         impl $name {
             pub fn new() -> Self {
                 Self([<$t>::default(); $l])
             }
-            pub fn from_array(v: [$t; $l]) -> Self {
-                Self(v.clone())
-            }
-            pub fn from_slice_pad(v: &[$t]) -> Self {
+            pub fn from_seq_pad(v: &dyn SeqTrait<$t>) -> Self {
                 assert!(v.len() <= $l);
                 let mut tmp = [<$t>::default(); $l];
-                for i in 0..v.len() {
-                    tmp[i] = v[i];
+                for (i, x) in v.iter().enumerate() {
+                    tmp[i] = *x;
+                }
+                Self(tmp.clone())
+            }
+            pub fn from_exact_seq(v: &dyn SeqTrait<$t>) -> Self {
+                assert!(v.len() == $l);
+                let mut tmp = [<$t>::default(); $l];
+                for (i, x) in v.iter().enumerate() {
+                    tmp[i] = *x;
                 }
                 Self(tmp.clone())
             }
@@ -382,7 +361,7 @@ macro_rules! array {
         }
         impl From<&[$t]> for $name {
             fn from(x: &[$t]) -> $name {
-                $name::from_slice_pad(x)
+                $name::from_seq_pad(&Seq::from(x.to_vec()))
             }
         }
         impl From<$name> for [$t; $l] {
@@ -468,4 +447,19 @@ pub fn u64_to_be_bytes(x: u64) -> U64Word {
 
 pub fn u64_to_le_bytes(x: u64) -> U64Word {
     U64Word(x.to_le_bytes())
+}
+
+pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<u64>) -> Bytes {
+    let mut result = Bytes::new_len(x.len() * 8);
+    for (i, v) in x.iter().enumerate().rev() {
+        result[0 + (i * 8)] = (v & 0xFFu64) as u8;
+        result[1 + (i * 8)] = ((v & 0xFF00u64) >> 8) as u8;
+        result[2 + (i * 8)] = ((v & 0xFF0000u64) >> 16) as u8;
+        result[3 + (i * 8)] = ((v & 0xFF000000u64) >> 24) as u8;
+        result[4 + (i * 8)] = ((v & 0xFF00000000u64) >> 32) as u8;
+        result[5 + (i * 8)] = ((v & 0xFF0000000000u64) >> 40) as u8;
+        result[6 + (i * 8)] = ((v & 0xFF000000000000u64) >> 48) as u8;
+        result[7 + (i * 8)] = ((v & 0xFF00000000000000u64) >> 56) as u8;
+    }
+    result
 }
