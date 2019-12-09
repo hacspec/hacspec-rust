@@ -80,7 +80,13 @@ impl<T: Copy + Default> Seq<T> {
             self[start + i] = *b;
         }
     }
-    pub fn update_sub(&mut self, start_out: usize, v: &dyn SeqTrait<T>, start_in: usize, len: usize) {
+    pub fn update_sub(
+        &mut self,
+        start_out: usize,
+        v: &dyn SeqTrait<T>,
+        start_in: usize,
+        len: usize,
+    ) {
         assert!(self.len() >= start_out + len);
         assert!(v.len() >= start_in + len);
         for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
@@ -96,14 +102,6 @@ impl<T: Copy + Default> Seq<T> {
         <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(&self[r]);
         a
     }
-
-    pub fn split(&self, block_size: usize) -> Vec<Seq<T>> {
-        let mut res = Vec::<Seq<T>>::new();
-        for i in (0..self.len()).step_by(block_size) {
-            res.push(Seq::from_array(&self[i..min(i + block_size, self.len())]));
-        }
-        res
-    }
 }
 
 impl<T: Copy> Seq<T>
@@ -118,43 +116,6 @@ where
         Self {
             b: Seq::get_random_vec(l),
         }
-    }
-}
-
-impl Seq<u8> {
-    pub fn from_u32l(x: u32) -> Self {
-        Bytes {
-            b: vec![
-                ((x & 0xFF000000) >> 24) as u8,
-                ((x & 0xFF0000) >> 16) as u8,
-                ((x & 0xFF00) >> 8) as u8,
-                (x & 0xFF) as u8,
-            ],
-        }
-    }
-
-    /// Get a u128 representing at most the first 16 byte of this byte vector.
-    /// # PANICS
-    /// Panics if there's nothing to convert, i.e. self.b.is_empty().
-    pub fn to_le_uint(&self) -> u128 {
-        assert!(!self.is_empty());
-        let mut r = self[0] as u128;
-        for i in 1..self.len() {
-            r |= (self[i] as u128) << i * 8;
-        }
-        r
-    }
-}
-
-/// Read a u32 into a byte array.
-pub fn byte_seq_from_u32l(x: u32) -> Seq<u8> {
-    Seq {
-        b: vec![
-            ((x & 0xFF000000) >> 24) as u8,
-            ((x & 0xFF0000) >> 16) as u8,
-            ((x & 0xFF00) >> 8) as u8,
-            (x & 0xFF) as u8,
-        ],
     }
 }
 
@@ -205,11 +166,6 @@ impl<T: Copy> IndexMut<Range<usize>> for Seq<T> {
 impl<T: Copy> From<Vec<T>> for Seq<T> {
     fn from(x: Vec<T>) -> Seq<T> {
         Self { b: x.clone() }
-    }
-}
-impl<T: Copy> Into<Vec<T>> for Seq<T> {
-    fn into(self) -> Vec<T> {
-        self.b.to_vec()
     }
 }
 /// Read hex string to Bytes.
@@ -319,7 +275,13 @@ macro_rules! array {
                     self[start + i] = *b;
                 }
             }
-            pub fn update_sub(&mut self, start_out: usize, v: &dyn SeqTrait<$t>, start_in: usize, len: usize) {
+            pub fn update_sub(
+                &mut self,
+                start_out: usize,
+                v: &dyn SeqTrait<$t>,
+                start_in: usize,
+                len: usize,
+            ) {
                 assert!(self.len() >= start_out + len);
                 assert!(v.len() >= start_in + len);
                 for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
@@ -478,6 +440,15 @@ where
 bytes!(U32Word, 4);
 bytes!(U128Word, 16);
 bytes!(U64Word, 8);
+
+pub fn u32_to_le_bytes(x: u32) -> U32Word {
+    U32Word([
+        ((x & 0xFF000000) >> 24) as u8,
+        ((x & 0xFF0000) >> 16) as u8,
+        ((x & 0xFF00) >> 8) as u8,
+        (x & 0xFF) as u8,
+    ])
+}
 
 pub fn u32_from_le_bytes(s: U32Word) -> u32 {
     u32::from_le_bytes(s.0)
