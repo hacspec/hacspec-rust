@@ -6,6 +6,7 @@ macro_rules! hacspec_crates {
     () => {
         extern crate num;
         extern crate rand;
+        extern crate secret_integers;
         extern crate uint;
         extern crate wrapping_arithmetic;
     };
@@ -16,6 +17,8 @@ macro_rules! hacspec_imports {
     () => {
         #[allow(unused_imports)]
         use num::{BigUint, Num, Zero};
+        #[allow(unused_imports)]
+        use secret_integers::*;
         #[allow(unused_imports)]
         use std::num::ParseIntError;
         #[allow(unused_imports)]
@@ -57,7 +60,7 @@ pub struct Seq<T: Copy> {
     b: Vec<T>,
 }
 
-pub type Bytes = Seq<u8>;
+pub type Bytes = Seq<U8>;
 
 impl<T: Copy + Default> Seq<T> {
     pub fn new_len(l: usize) -> Self {
@@ -180,7 +183,7 @@ impl From<&str> for Seq<u8> {
 #[macro_export]
 macro_rules! bytes {
     ($name:ident, $l:expr) => {
-        array!($name, $l, u8);
+        array!($name, $l, U8, u8);
         impl $name {
             /// Convert a `Field` to a byte array (little endian).
             /// TODO: The `From` trait doesn't work for this for some reason.
@@ -188,7 +191,12 @@ macro_rules! bytes {
             where
                 T: Field,
             {
-                $name::from(&f.to_bytes_le()[..])
+                $name::from(
+                    (&f.to_bytes_le()[..])
+                        .iter()
+                        .map(|x| U8::classify(*x))
+                        .collect::<Vec<U8>>(),
+                )
             }
         }
     };
@@ -196,7 +204,7 @@ macro_rules! bytes {
 
 #[macro_export]
 macro_rules! array {
-    ($name:ident,$l:expr,$t:ty) => {
+    ($name:ident,$l:expr,$t:ty, $tbase:ty) => {
         /// Fixed length byte array.
         /// Because Rust requires fixed length arrays to have a known size at
         /// compile time there's no generic fixed length byte array here.
@@ -336,12 +344,23 @@ macro_rules! array {
         }
         impl fmt::Debug for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0[..].fmt(f)
+                self.0[..]
+                    .iter()
+                    .map(|x| <$t>::declassify(*x))
+                    .collect::<Vec<_>>()
+                    .fmt(f)
             }
         }
         impl PartialEq for $name {
             fn eq(&self, other: &Self) -> bool {
-                self.0[..] == other.0[..]
+                self.0[..]
+                    .iter()
+                    .map(|x| <$t>::declassify(*x))
+                    .collect::<Vec<_>>()
+                    == other.0[..]
+                        .iter()
+                        .map(|x| <$t>::declassify(*x))
+                        .collect::<Vec<_>>()
             }
         }
         impl From<Vec<$t>> for $name {
@@ -375,16 +394,16 @@ macro_rules! array {
                 assert!(s.len() % std::mem::size_of::<$t>() == 0);
                 let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
                     .step_by(2)
-                    .map(|i| <$t>::from_str_radix(&s[i..i + 2], 16))
+                    .map(|i| <$tbase>::from_str_radix(&s[i..i + 2], 16).map(<$t>::classify))
                     .collect();
                 b.expect("Error parsing hex string")
             }
 
-            fn get_random_vec(l: usize) -> Vec<$t> {
-                (0..l).map(|_| rand::random::<$t>()).collect()
+            pub fn get_random_vec(l: usize) -> Vec<$t> {
+                (0..l).map(|_| <$t>::classify(rand::random::<$tbase>())).collect()
             }
 
-            pub fn random() -> Self {
+            pub fn random() -> $name {
                 let mut tmp = [<$t>::default(); $l];
                 tmp.copy_from_slice(&$name::get_random_vec($l)[..$l]);
                 Self(tmp.clone())
@@ -420,46 +439,46 @@ bytes!(U32Word, 4);
 bytes!(U128Word, 16);
 bytes!(U64Word, 8);
 
-pub fn u32_to_le_bytes(x: u32) -> U32Word {
+pub fn u32_to_le_bytes(x: U32) -> U32Word {
     U32Word([
-        ((x & 0xFF000000) >> 24) as u8,
-        ((x & 0xFF0000) >> 16) as u8,
-        ((x & 0xFF00) >> 8) as u8,
-        (x & 0xFF) as u8,
+        U8::from((x & U32::classify(0xFF000000u32)) >> 24),
+        U8::from((x & U32::classify(0xFF0000u32)) >> 16),
+        U8::from((x & U32::classify(0xFF00u32)) >> 8),
+        U8::from(x & U32::classify(0xFFu32)),
     ])
 }
 
-pub fn u32_from_le_bytes(s: U32Word) -> u32 {
-    u32::from_le_bytes(s.0)
+pub fn u32_from_le_bytes(s: U32Word) -> U32 {
+    U32::from_bytes_le(&s.0)[0]
 }
 
-pub fn u32_to_be_bytes(x: u32) -> U32Word {
-    U32Word(x.to_be_bytes())
+pub fn u32_to_be_bytes(x: U32) -> U32Word {
+    U32Word::from(U32::to_bytes_be(&[x]).as_slice())
 }
 
-pub fn u128_from_le_bytes(s: U128Word) -> u128 {
-    u128::from_le_bytes(s.0)
+pub fn u128_from_le_bytes(s: U128Word) -> U128 {
+    U128::from_bytes_le(&s.0)[0]
 }
 
-pub fn u64_to_be_bytes(x: u64) -> U64Word {
-    U64Word(x.to_be_bytes())
+pub fn u64_to_be_bytes(x: U64) -> U64Word {
+    U64Word::from(U64::to_bytes_be(&[x]).as_slice())
 }
 
-pub fn u64_to_le_bytes(x: u64) -> U64Word {
-    U64Word(x.to_le_bytes())
+pub fn u64_to_le_bytes(x: U64) -> U64Word {
+    U64Word::from(U64::to_bytes_le(&[x]).as_slice())
 }
 
-pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<u64>) -> Bytes {
+pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<U64>) -> Bytes {
     let mut result = Bytes::new_len(x.len() * 8);
     for (i, v) in x.iter().enumerate().rev() {
-        result[0 + (i * 8)] = (v & 0xFFu64) as u8;
-        result[1 + (i * 8)] = ((v & 0xFF00u64) >> 8) as u8;
-        result[2 + (i * 8)] = ((v & 0xFF0000u64) >> 16) as u8;
-        result[3 + (i * 8)] = ((v & 0xFF000000u64) >> 24) as u8;
-        result[4 + (i * 8)] = ((v & 0xFF00000000u64) >> 32) as u8;
-        result[5 + (i * 8)] = ((v & 0xFF0000000000u64) >> 40) as u8;
-        result[6 + (i * 8)] = ((v & 0xFF000000000000u64) >> 48) as u8;
-        result[7 + (i * 8)] = ((v & 0xFF00000000000000u64) >> 56) as u8;
+        result[0 + (i * 8)] = U8::from(*v & U64::classify(0xFFu64));
+        result[1 + (i * 8)] = U8::from((*v & U64::classify(0xFF00u64)) >> 8);
+        result[2 + (i * 8)] = U8::from((*v & U64::classify(0xFF0000u64)) >> 16);
+        result[3 + (i * 8)] = U8::from((*v & U64::classify(0xFF000000u64)) >> 24);
+        result[4 + (i * 8)] = U8::from((*v & U64::classify(0xFF00000000u64)) >> 32);
+        result[5 + (i * 8)] = U8::from((*v & U64::classify(0xFF0000000000u64)) >> 40);
+        result[6 + (i * 8)] = U8::from((*v & U64::classify(0xFF000000000000u64)) >> 48);
+        result[7 + (i * 8)] = U8::from((*v & U64::classify(0xFF00000000000000u64)) >> 56);
     }
     result
 }
