@@ -107,12 +107,9 @@ impl<T: Copy + Default> Seq<T> {
     }
 }
 
-impl<T: Copy> Seq<T>
-where
-    rand::distributions::Standard: rand::distributions::Distribution<T>,
-{
-    fn get_random_vec(l: usize) -> Vec<T> {
-        (0..l).map(|_| rand::random::<T>()).collect()
+impl Seq<U8> {
+    fn get_random_vec(l: usize) -> Vec<U8> {
+        (0..l).map(|_| rand::random::<u8>()).map(|x| U8::classify(x)).collect()
     }
 
     pub fn random(l: usize) -> Self {
@@ -172,9 +169,9 @@ impl<T: Copy> From<Vec<T>> for Seq<T> {
     }
 }
 /// Read hex string to Bytes.
-impl From<&str> for Seq<u8> {
-    fn from(s: &str) -> Seq<u8> {
-        Seq::from(hex_string_to_bytes(s))
+impl From<&str> for Seq<U8> {
+    fn from(s: &str) -> Seq<U8> {
+        Seq::from(hex_string_to_bytes(s).iter().map(|x| U8::classify(*x)).collect::<Vec<_>>())
     }
 }
 
@@ -203,7 +200,7 @@ macro_rules! bytes {
 }
 
 #[macro_export]
-macro_rules! array {
+macro_rules! array_base {
     ($name:ident,$l:expr,$t:ty, $tbase:ty) => {
         /// Fixed length byte array.
         /// Because Rust requires fixed length arrays to have a known size at
@@ -342,27 +339,6 @@ macro_rules! array {
                 &self.0[r]
             }
         }
-        impl fmt::Debug for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0[..]
-                    .iter()
-                    .map(|x| <$t>::declassify(*x))
-                    .collect::<Vec<_>>()
-                    .fmt(f)
-            }
-        }
-        impl PartialEq for $name {
-            fn eq(&self, other: &Self) -> bool {
-                self.0[..]
-                    .iter()
-                    .map(|x| <$t>::declassify(*x))
-                    .collect::<Vec<_>>()
-                    == other.0[..]
-                        .iter()
-                        .map(|x| <$t>::declassify(*x))
-                        .collect::<Vec<_>>()
-            }
-        }
         impl From<Vec<$t>> for $name {
             fn from(x: Vec<$t>) -> $name {
                 assert!(x.len() <= $l);
@@ -390,19 +366,6 @@ macro_rules! array {
         }
 
         impl $name {
-            fn hex_string_to_vec(s: &str) -> Vec<$t> {
-                assert!(s.len() % std::mem::size_of::<$t>() == 0);
-                let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
-                    .step_by(2)
-                    .map(|i| <$tbase>::from_str_radix(&s[i..i + 2], 16).map(<$t>::classify))
-                    .collect();
-                b.expect("Error parsing hex string")
-            }
-
-            pub fn get_random_vec(l: usize) -> Vec<$t> {
-                (0..l).map(|_| <$t>::classify(rand::random::<$tbase>())).collect()
-            }
-
             pub fn random() -> $name {
                 let mut tmp = [<$t>::default(); $l];
                 tmp.copy_from_slice(&$name::get_random_vec($l)[..$l]);
@@ -435,9 +398,88 @@ where
     a
 }
 
+#[macro_export]
+macro_rules! array {
+    ($name:ident,$l:expr,$t:ty, $tbase:ty) => {
+        array_base!($name, $l, $t, $tbase);
+
+        impl $name {
+            fn hex_string_to_vec(s: &str) -> Vec<$t> {
+                assert!(s.len() % std::mem::size_of::<$t>() == 0);
+                let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
+                    .step_by(2)
+                    .map(|i| <$tbase>::from_str_radix(&s[i..i + 2], 16).map(<$t>::classify))
+                    .collect();
+                b.expect("Error parsing hex string")
+            }
+
+            pub fn get_random_vec(l: usize) -> Vec<$t> {
+                (0..l)
+                    .map(|_| <$t>::classify(rand::random::<$tbase>()))
+                    .collect()
+            }
+        }
+
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.0[..]
+                    .iter()
+                    .map(|x| <$t>::declassify(*x))
+                    .collect::<Vec<_>>()
+                    .fmt(f)
+            }
+        }
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                self.0[..]
+                    .iter()
+                    .map(|x| <$t>::declassify(*x))
+                    .collect::<Vec<_>>()
+                    == other.0[..]
+                        .iter()
+                        .map(|x| <$t>::declassify(*x))
+                        .collect::<Vec<_>>()
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! public_array {
+    ($name:ident,$l:expr,$t:ty) => {
+        array_base!($name, $l, $t, $t);
+        impl $name {
+            fn hex_string_to_vec(s: &str) -> Vec<$t> {
+                assert!(s.len() % std::mem::size_of::<$t>() == 0);
+                let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
+                    .step_by(2)
+                    .map(|i| <$t>::from_str_radix(&s[i..i + 2], 16))
+                    .collect();
+                b.expect("Error parsing hex string")
+            }
+
+            pub fn get_random_vec(l: usize) -> Vec<$t> {
+                (0..l).map(|_| rand::random::<$t>()).collect()
+            }
+        }
+
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.0[..].fmt(f)
+            }
+        }
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                self.0[..] == other.0[..]
+            }
+        }
+    };
+}
+
 bytes!(U32Word, 4);
 bytes!(U128Word, 16);
 bytes!(U64Word, 8);
+public_array!(Counter, 2, usize);
 
 pub fn u32_to_le_bytes(x: U32) -> U32Word {
     U32Word([
