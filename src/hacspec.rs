@@ -16,7 +16,7 @@ macro_rules! hacspec_crates {
 macro_rules! hacspec_imports {
     () => {
         #[allow(unused_imports)]
-        use num::{BigUint, Num, Zero};
+        use num::{BigUint, Num, Zero, CheckedSub};
         #[allow(unused_imports)]
         use secret_integers::*;
         #[allow(unused_imports)]
