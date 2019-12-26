@@ -8,7 +8,6 @@ macro_rules! hacspec_crates {
         extern crate rand;
         extern crate secret_integers;
         extern crate abstract_integers;
-        extern crate wrapping_arithmetic;
     };
 }
 
@@ -27,8 +26,6 @@ macro_rules! hacspec_imports {
         use std::ops::*;
         #[allow(unused_imports)]
         use std::{cmp::min, cmp::PartialEq, fmt};
-        #[allow(unused_imports)]
-        use wrapping_arithmetic::wrappit;
     };
 }
 
