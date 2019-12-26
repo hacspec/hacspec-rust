@@ -7,7 +7,7 @@ macro_rules! hacspec_crates {
         extern crate num;
         extern crate rand;
         extern crate secret_integers;
-        extern crate uint;
+        extern crate abstract_integers;
         extern crate wrapping_arithmetic;
     };
 }
@@ -20,13 +20,13 @@ macro_rules! hacspec_imports {
         #[allow(unused_imports)]
         use secret_integers::*;
         #[allow(unused_imports)]
+        use abstract_integers::*;
+        #[allow(unused_imports)]
         use std::num::ParseIntError;
         #[allow(unused_imports)]
         use std::ops::*;
         #[allow(unused_imports)]
         use std::{cmp::min, cmp::PartialEq, fmt};
-        #[allow(unused_imports)]
-        use uint::{natmod_p::*, traits::*, uint_n::*};
         #[allow(unused_imports)]
         use wrapping_arithmetic::wrappit;
     };
@@ -181,21 +181,6 @@ impl From<&str> for Seq<U8> {
 macro_rules! bytes {
     ($name:ident, $l:expr) => {
         array!($name, $l, U8, u8);
-        impl $name {
-            /// Convert a `Field` to a byte array (little endian).
-            /// TODO: The `From` trait doesn't work for this for some reason.
-            pub fn from_field<T>(f: T) -> Self
-            where
-                T: Field,
-            {
-                $name::from(
-                    (&f.to_bytes_le()[..])
-                        .iter()
-                        .map(|x| U8::classify(*x))
-                        .collect::<Vec<U8>>(),
-                )
-            }
-        }
     };
 }
 
