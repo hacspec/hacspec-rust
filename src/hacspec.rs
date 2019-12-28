@@ -219,6 +219,11 @@ macro_rules! array_base {
                 a
             }
 
+            pub fn from_sub<A: SeqTrait<$t>>(input: A, r:Range<usize>) -> Self {
+                assert!($l == r.end - r.start, "sub range is not the length of the output type "); 
+                $name::from_sub_pad(input, r)
+            }
+
             pub fn from_seq_pad(v: &dyn SeqTrait<$t>) -> Self {
                 assert!(v.len() <= $l);
                 let mut tmp = [<$t>::default(); $l];
@@ -274,18 +279,6 @@ macro_rules! array_base {
             }
             pub fn len(&self) -> usize {
                 $l
-            }
-            /// Get an array for the given range `r`.
-            ///
-            /// #Panics
-            /// Panics if `self` is too short `start-end` is not equal to the result length.
-            pub fn get<A: SeqTrait<$t>>(&self, r: Range<usize>) -> A
-            where
-                A: Default + AsMut<[$t]>,
-            {
-                let mut a = A::default();
-                <A as AsMut<[$t]>>::as_mut(&mut a).copy_from_slice(&self[r]);
-                a
             }
         }
 
