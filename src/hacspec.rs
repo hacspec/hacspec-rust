@@ -74,24 +74,26 @@ impl<T: Copy + Default> Seq<T> {
     pub fn len(&self) -> usize {
         self.b.len()
     }
-    pub fn update(&mut self, start: usize, v: &dyn SeqTrait<T>) {
+    pub fn update<A: SeqTrait<T>>(mut self, start: usize, v: A) -> Self {
         assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
+        self
     }
-    pub fn update_sub(
-        &mut self,
+    pub fn update_sub<A: SeqTrait<T>>(
+        mut self,
         start_out: usize,
-        v: &dyn SeqTrait<T>,
+        v: A ,
         start_in: usize,
         len: usize,
-    ) {
+    ) -> Self {
         assert!(self.len() >= start_out + len);
         assert!(v.len() >= start_in + len);
         for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
             self[start_out + i] = *b;
         }
+        self
     }
 
     pub fn from_sub<A: SeqTrait<T>>(input: A, r:Range<usize>) -> Self {
@@ -220,11 +222,11 @@ macro_rules! array_base {
             }
 
             pub fn from_sub<A: SeqTrait<$t>>(input: A, r:Range<usize>) -> Self {
-                assert!($l == r.end - r.start, "sub range is not the length of the output type "); 
+                assert!($l == r.end - r.start, "sub range is not the length of the output type ");
                 $name::from_sub_pad(input, r)
             }
 
-            pub fn from_seq_pad(v: &dyn SeqTrait<$t>) -> Self {
+            pub fn copy_pad<A: SeqTrait<$t>>(v: A) -> Self {
                 assert!(v.len() <= $l);
                 let mut tmp = [<$t>::default(); $l];
                 for (i, x) in v.iter().enumerate() {
@@ -232,7 +234,7 @@ macro_rules! array_base {
                 }
                 Self(tmp.clone())
             }
-            pub fn from_exact_seq(v: &dyn SeqTrait<$t>) -> Self {
+            pub fn copy<A: SeqTrait<$t>>(v: A) -> Self {
                 assert!(v.len() == $l);
                 let mut tmp = [<$t>::default(); $l];
                 for (i, x) in v.iter().enumerate() {
@@ -258,24 +260,26 @@ macro_rules! array_base {
                 }
                 Self(tmp.clone())
             }
-            pub fn update(&mut self, start: usize, v: &dyn SeqTrait<$t>) {
+            pub fn update<A: SeqTrait<$t>>(mut self, start: usize, v: A) -> Self {
                 assert!(self.len() >= start + v.len());
                 for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
                 }
+                self
             }
-            pub fn update_sub(
-                &mut self,
+            pub fn update_sub<A: SeqTrait<$t>>(
+                mut self,
                 start_out: usize,
-                v: &dyn SeqTrait<$t>,
+                v: A,
                 start_in: usize,
                 len: usize,
-            ) {
+            ) -> Self {
                 assert!(self.len() >= start_out + len);
                 assert!(v.len() >= start_in + len);
                 for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
                     self[start_out + i] = *b;
                 }
+                self
             }
             pub fn len(&self) -> usize {
                 $l
@@ -349,7 +353,7 @@ macro_rules! array_base {
         }
         impl From<&[$t]> for $name {
             fn from(x: &[$t]) -> $name {
-                $name::from_seq_pad(&Seq::from(x.to_vec()))
+                $name::copy_pad(Seq::from(x.to_vec()))
             }
         }
         impl From<$name> for [$t; $l] {
