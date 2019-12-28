@@ -93,8 +93,17 @@ impl<T: Copy + Default> Seq<T> {
             self[start_out + i] = *b;
         }
     }
+
+    pub fn from_sub<A: SeqTrait<T>>(input: A, r:Range<usize>) -> Self {
+        let mut a = Self::default();
+        for (i, v) in r.clone().zip(input.iter().skip(r.start).take(r.end - r.start)) {
+            a[i] = *v;
+        }
+        a
+    }
+
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
-    pub fn get<A: SeqTrait<T>>(&self, r: Range<usize>) -> A
+    pub fn sub<A: SeqTrait<T>>(&self, r: Range<usize>) -> A
     where
         A: Default + AsMut<[T]>,
     {
@@ -201,6 +210,15 @@ macro_rules! array_base {
             pub fn new() -> Self {
                 Self([<$t>::default(); $l])
             }
+
+            pub fn from_sub_pad<A: SeqTrait<$t>>(input: A, r:Range<usize>) -> Self {
+                let mut a = Self::default();
+                for (i, v) in r.clone().zip(input.iter().skip(r.start).take(r.end - r.start)) {
+                    a[i - r.start] = *v;
+                }
+                a
+            }
+
             pub fn from_seq_pad(v: &dyn SeqTrait<$t>) -> Self {
                 assert!(v.len() <= $l);
                 let mut tmp = [<$t>::default(); $l];
@@ -505,4 +523,15 @@ pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<U64>) -> Bytes {
         result[7 + (i * 8)] = U8::from((*v & U64::classify(0xFF00000000000000u64)) >> 56);
     }
     result
+}
+
+#[macro_export]
+macro_rules! secret_constant_array {
+    ( $name: ident, $array_type:ident, $int_type: ident, [ $( $x:expr ),+ ] ) => {
+        const $name: $array_type = $array_type ([
+            $(
+                $int_type($x)
+            ),+
+        ]);
+    }
 }
