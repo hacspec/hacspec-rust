@@ -214,24 +214,6 @@ macro_rules! array_base {
                 }
                 Self(tmp.clone())
             }
-            /// This takes an arbitrary length slice and takes at most $l bytes
-            /// zero-padded into $name.
-            pub fn from_slice_lazy(v: &[$t]) -> Self {
-                let mut tmp = [<$t>::default(); $l];
-                for i in 0..min($l, v.len()) {
-                    tmp[i] = v[i];
-                }
-                Self(tmp.clone())
-            }
-            /// This takes an arbitrary length vec and takes at most $l bytes
-            /// zero-padded into $name.
-            pub fn from_vec_lazy(v: Vec<$t>) -> Self {
-                let mut tmp = [<$t>::default(); $l];
-                for i in 0..min($l, v.len()) {
-                    tmp[i] = v[i];
-                }
-                Self(tmp.clone())
-            }
             pub fn update<A: SeqTrait<$t>>(mut self, start: usize, v: A) -> Self {
                 assert!(self.len() >= start + v.len());
                 for (i, b) in v.iter().enumerate() {
@@ -289,23 +271,6 @@ macro_rules! array_base {
         impl IndexMut<usize> for $name {
             fn index_mut(&mut self, i: usize) -> &mut $t {
                 &mut self.0[i]
-            }
-        }
-        impl Index<Range<usize>> for $name {
-            type Output = [$t];
-            fn index(&self, r: Range<usize>) -> &[$t] {
-                &self.0[r]
-            }
-        }
-        impl IndexMut<Range<usize>> for $name {
-            fn index_mut(&mut self, r: Range<usize>) -> &mut [$t] {
-                &mut self.0[r]
-            }
-        }
-        impl Index<RangeFull> for $name {
-            type Output = [$t];
-            fn index(&self, r: RangeFull) -> &[$t] {
-                &self.0[r]
             }
         }
         impl From<Vec<$t>> for $name {
