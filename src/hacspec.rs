@@ -283,21 +283,6 @@ macro_rules! array_base {
                 $name(tmp.clone())
             }
         }
-        impl From<$name> for Vec<$t> {
-            fn from(x: $name) -> Vec<$t> {
-                x.0.to_vec()
-            }
-        }
-        impl From<&[$t]> for $name {
-            fn from(x: &[$t]) -> $name {
-                $name::copy_pad(Seq::from(x.to_vec()))
-            }
-        }
-        impl From<$name> for [$t; $l] {
-            fn from(x: $name) -> [$t; $l] {
-                x.0
-            }
-        }
 
         impl $name {
             pub fn random() -> $name {
@@ -320,16 +305,6 @@ macro_rules! array_base {
             }
         }
     };
-}
-
-pub fn to_array<A: SeqTrait<T>, T>(slice: &[T]) -> A
-where
-    A: Default + AsMut<[T]>,
-    T: Copy,
-{
-    let mut a = A::default();
-    <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
-    a
 }
 
 #[macro_export]
@@ -429,7 +404,7 @@ pub fn u32_from_le_bytes(s: U32Word) -> U32 {
 }
 
 pub fn u32_to_be_bytes(x: U32) -> U32Word {
-    U32Word::from(U32::to_bytes_be(&[x]).as_slice())
+    U32Word::from(U32::to_bytes_be(&[x]))
 }
 
 pub fn u128_from_le_bytes(s: U128Word) -> U128 {
@@ -437,11 +412,11 @@ pub fn u128_from_le_bytes(s: U128Word) -> U128 {
 }
 
 pub fn u64_to_be_bytes(x: U64) -> U64Word {
-    U64Word::from(U64::to_bytes_be(&[x]).as_slice())
+    U64Word::from(U64::to_bytes_be(&[x]))
 }
 
 pub fn u64_to_le_bytes(x: U64) -> U64Word {
-    U64Word::from(U64::to_bytes_le(&[x]).as_slice())
+    U64Word::from(U64::to_bytes_le(&[x]))
 }
 
 pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<U64>) -> Bytes {
