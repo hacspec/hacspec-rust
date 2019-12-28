@@ -435,12 +435,36 @@ pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<U64>) -> Bytes {
 }
 
 #[macro_export]
-macro_rules! secret_constant_array {
-    ( $name: ident, $array_type:ident, $int_type: ident, [ $( $x:expr ),+ ] ) => {
-        const $name: $array_type = $array_type ([
+macro_rules! secret_array {
+    ( $int_type: ident, [ $( $x:expr ),+ ] ) => {
+        [
             $(
                 $int_type($x)
             ),+
-        ]);
+        ]
+    }
+}
+
+#[macro_export]
+macro_rules! secret_bytes {
+    ([ $( $x:expr ),+ ] ) => {
+        secret_array!(U8, [$($x),+])
+    }
+}
+
+#[macro_export]
+macro_rules! assert_secret_array_eq {
+    ( $a1: expr, $a2: expr, $si: ident) => {
+        assert_eq!(
+            $a1.iter().map(|x| $si::declassify(*x)).collect::<Vec<_>>(),
+            $a2.iter().map(|x| $si::declassify(*x)).collect::<Vec<_>>()
+        );
+    }
+}
+
+#[macro_export]
+macro_rules! assert_bytes_eq {
+    ( $a1: expr, $a2: expr) => {
+      assert_secret_array_eq!($a1, $a2, U8)
     }
 }
