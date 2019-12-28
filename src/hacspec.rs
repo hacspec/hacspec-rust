@@ -103,16 +103,6 @@ impl<T: Copy + Default> Seq<T> {
         }
         a
     }
-
-    /// **Panics** if `self` is too short `start-end` is not equal to the result length.
-    pub fn sub<A: SeqTrait<T>>(&self, r: Range<usize>) -> A
-    where
-        A: Default + AsMut<[T]>,
-    {
-        let mut a = A::default();
-        <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(&self[r]);
-        a
-    }
 }
 
 impl Seq<U8> {
@@ -152,25 +142,7 @@ impl<T: Copy> IndexMut<usize> for Seq<T> {
     }
 }
 
-impl<T: Copy> Index<Range<usize>> for Seq<T> {
-    type Output = [T];
-    fn index(&self, r: Range<usize>) -> &[T] {
-        &self.b[r]
-    }
-}
 
-impl<T: Copy> Index<RangeFull> for Seq<T> {
-    type Output = [T];
-    fn index(&self, _r: RangeFull) -> &[T] {
-        &self.b[..]
-    }
-}
-
-impl<T: Copy> IndexMut<Range<usize>> for Seq<T> {
-    fn index_mut(&mut self, r: Range<usize>) -> &mut [T] {
-        &mut self.b[r]
-    }
-}
 impl<T: Copy> From<Vec<T>> for Seq<T> {
     fn from(x: Vec<T>) -> Seq<T> {
         Self { b: x.clone() }
