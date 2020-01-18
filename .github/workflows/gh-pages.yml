@@ -1,0 +1,31 @@
+name: github pages
+
+on:
+  push:
+    branches:
+      - franziskus-doc
+
+jobs:
+  rustdoc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hecrj/setup-rust-action@v1
+      - uses: actions/checkout@master
+      - name: Build docs
+        run: |
+          cargo doc --all-features
+          cat > target/doc/index.html <<EOF
+          <!doctype html>
+          <html><head>
+            <meta http-equiv="refresh" content="0; URL='hacspec/index.html'" />
+          </head></html>
+          EOF
+      - name: Deploy to Github Pages
+        uses: crazy-max/ghaction-github-pages@master
+        if: success()
+        with:
+          target_branch: gh-pages
+          build_dir: target/doc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_PAT: ${{ secrets.ACCESS_TOKEN }}

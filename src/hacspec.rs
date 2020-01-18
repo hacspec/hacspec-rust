@@ -1,12 +1,31 @@
 //!
-//! hacspec Rust library.
+//! hacspec consists of three parts:
+//! * hacspec library
+//! * syntax checker
+//! * compiler
+//!
+//! # The hacspec library
+//!
+//! The hacspec library implements a comprehensive set of functions to implement
+//! succinct cryptographic specs that can be compiled to formal languages such
+//! as [F*](https://www.fstar-lang.org/).
+//!
+//! # The syntax checker
+//! TODO:
+//! * describe clippy extension
+//! * add `cargo hacspec check` command
+//!
+//! # The compiler
+//! TODO:
+//! * define compiler interface
+//! * add `cargo hacspec fstar` command
 //!
 extern crate rand;
 
 use std::cmp::min;
 use std::convert::AsMut;
-use std::ops::{Index, IndexMut, Range, RangeFull};
 use std::num::ParseIntError;
+use std::ops::{Index, IndexMut, Range, RangeFull};
 
 #[macro_export]
 macro_rules! hacspec_imports {
@@ -24,9 +43,9 @@ macro_rules! hacspec_imports {
 macro_rules! hacspec_crates {
     () => {
         extern crate num;
+        extern crate paste;
         extern crate uint;
         extern crate wrapping_arithmetic;
-        extern crate paste;
     };
 }
 
@@ -76,13 +95,11 @@ pub trait ByteArray {
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct ByteSlice<'a> {
-    b: &'a[u8]
+    b: &'a [u8],
 }
 impl<'a> ByteSlice<'a> {
     fn new(b_in: &'a Bytes) -> ByteSlice<'a> {
-        Self {
-            b: &b_in[..]
-        }
+        Self { b: &b_in[..] }
     }
     pub fn len(&self) -> usize {
         self.b.len()
@@ -109,10 +126,10 @@ impl<'a> Index<Range<usize>> for ByteSlice<'a> {
 
 #[macro_export]
 macro_rules! vlbytes {
-    ($name:ident,$bytes_name:ident,$from:expr) => (
+    ($name:ident,$bytes_name:ident,$from:expr) => {
         let $bytes_name = Bytes::from($from);
         let $name = $bytes_name.get_slice();
-    );
+    };
 }
 
 /// Variable length byte arrays.
