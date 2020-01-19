@@ -161,6 +161,19 @@ impl<T: Copy> IndexMut<u32> for Seq<T> {
     }
 }
 
+impl<T: Copy> Index<i32> for Seq<T> {
+    type Output = T;
+    fn index(&self, i: i32) -> &T {
+        &self.b[i as usize]
+    }
+}
+
+impl<T: Copy> IndexMut<i32> for Seq<T> {
+    fn index_mut(&mut self, i: i32) -> &mut T {
+        &mut self.b[i as usize]
+    }
+}
+
 impl<T: Copy> Index<usize> for Seq<T> {
     type Output = T;
     fn index(&self, i: usize) -> &T {
@@ -335,6 +348,17 @@ macro_rules! array_base {
         }
         impl IndexMut<u32> for $name {
             fn index_mut(&mut self, i: u32) -> &mut $t {
+                &mut self.0[i as usize]
+            }
+        }
+        impl Index<i32> for $name {
+            type Output = $t;
+            fn index(&self, i: i32) -> &$t {
+                &self.0[i as usize]
+            }
+        }
+        impl IndexMut<i32> for $name {
+            fn index_mut(&mut self, i: i32) -> &mut $t {
                 &mut self.0[i as usize]
             }
         }
