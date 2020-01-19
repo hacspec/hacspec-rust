@@ -4,11 +4,10 @@
 #[macro_export]
 macro_rules! hacspec_crates {
     () => {
+        extern crate abstract_integers;
         extern crate num;
         extern crate rand;
         extern crate secret_integers;
-        extern crate uint;
-        extern crate wrapping_arithmetic;
     };
 }
 
@@ -16,7 +15,9 @@ macro_rules! hacspec_crates {
 macro_rules! hacspec_imports {
     () => {
         #[allow(unused_imports)]
-        use num::{BigUint, Num, Zero};
+        use abstract_integers::*;
+        #[allow(unused_imports)]
+        use num::{BigUint, CheckedSub, Num, Zero};
         #[allow(unused_imports)]
         use secret_integers::*;
         #[allow(unused_imports)]
@@ -25,10 +26,6 @@ macro_rules! hacspec_imports {
         use std::ops::*;
         #[allow(unused_imports)]
         use std::{cmp::min, cmp::PartialEq, fmt};
-        #[allow(unused_imports)]
-        use uint::{natmod_p::*, traits::*, uint_n::*};
-        #[allow(unused_imports)]
-        use wrapping_arithmetic::wrappit;
     };
 }
 
@@ -77,39 +74,46 @@ impl<T: Copy + Default> Seq<T> {
     pub fn len(&self) -> usize {
         self.b.len()
     }
-    pub fn update(&mut self, start: usize, v: &dyn SeqTrait<T>) {
+    pub fn update<A: SeqTrait<T>>(mut self, start: usize, v: A) -> Self {
         assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
+        self
     }
-    pub fn update_sub(
-        &mut self,
+    pub fn update_sub<A: SeqTrait<T>>(
+        mut self,
         start_out: usize,
-        v: &dyn SeqTrait<T>,
+        v: A,
         start_in: usize,
         len: usize,
-    ) {
+    ) -> Self {
         assert!(self.len() >= start_out + len);
         assert!(v.len() >= start_in + len);
         for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
             self[start_out + i] = *b;
         }
+        self
     }
-    /// **Panics** if `self` is too short `start-end` is not equal to the result length.
-    pub fn get<A: SeqTrait<T>>(&self, r: Range<usize>) -> A
-    where
-        A: Default + AsMut<[T]>,
-    {
-        let mut a = A::default();
-        <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(&self[r]);
+
+    pub fn from_sub<A: SeqTrait<T>>(input: A, r: Range<usize>) -> Self {
+        let mut a = Self::default();
+        for (i, v) in r
+            .clone()
+            .zip(input.iter().skip(r.start).take(r.end - r.start))
+        {
+            a[i] = *v;
+        }
         a
     }
 }
 
 impl Seq<U8> {
     fn get_random_vec(l: usize) -> Vec<U8> {
-        (0..l).map(|_| rand::random::<u8>()).map(|x| U8::classify(x)).collect()
+        (0..l)
+            .map(|_| rand::random::<u8>())
+            .map(|x| U8::classify(x))
+            .collect()
     }
 
     pub fn random(l: usize) -> Self {
@@ -170,25 +174,6 @@ impl<T: Copy> IndexMut<usize> for Seq<T> {
     }
 }
 
-impl<T: Copy> Index<Range<usize>> for Seq<T> {
-    type Output = [T];
-    fn index(&self, r: Range<usize>) -> &[T] {
-        &self.b[r]
-    }
-}
-
-impl<T: Copy> Index<RangeFull> for Seq<T> {
-    type Output = [T];
-    fn index(&self, _r: RangeFull) -> &[T] {
-        &self.b[..]
-    }
-}
-
-impl<T: Copy> IndexMut<Range<usize>> for Seq<T> {
-    fn index_mut(&mut self, r: Range<usize>) -> &mut [T] {
-        &mut self.b[r]
-    }
-}
 impl<T: Copy> From<Vec<T>> for Seq<T> {
     fn from(x: Vec<T>) -> Seq<T> {
         Self { b: x.clone() }
@@ -197,7 +182,12 @@ impl<T: Copy> From<Vec<T>> for Seq<T> {
 /// Read hex string to Bytes.
 impl From<&str> for Seq<U8> {
     fn from(s: &str) -> Seq<U8> {
-        Seq::from(hex_string_to_bytes(s).iter().map(|x| U8::classify(*x)).collect::<Vec<_>>())
+        Seq::from(
+            hex_string_to_bytes(s)
+                .iter()
+                .map(|x| U8::classify(*x))
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
@@ -207,21 +197,6 @@ impl From<&str> for Seq<U8> {
 macro_rules! bytes {
     ($name:ident, $l:expr) => {
         array!($name, $l, U8, u8);
-        impl $name {
-            /// Convert a `Field` to a byte array (little endian).
-            /// TODO: The `From` trait doesn't work for this for some reason.
-            pub fn from_field<T>(f: T) -> Self
-            where
-                T: Field,
-            {
-                $name::from(
-                    (&f.to_bytes_le()[..])
-                        .iter()
-                        .map(|x| U8::classify(*x))
-                        .collect::<Vec<U8>>(),
-                )
-            }
-        }
     };
 }
 
@@ -245,7 +220,27 @@ macro_rules! array_base {
             pub fn new() -> Self {
                 Self([<$t>::default(); $l])
             }
-            pub fn from_seq_pad(v: &dyn SeqTrait<$t>) -> Self {
+
+            pub fn from_sub_pad<A: SeqTrait<$t>>(input: A, r: Range<usize>) -> Self {
+                let mut a = Self::default();
+                for (i, v) in r
+                    .clone()
+                    .zip(input.iter().skip(r.start).take(r.end - r.start))
+                {
+                    a[i - r.start] = *v;
+                }
+                a
+            }
+
+            pub fn from_sub<A: SeqTrait<$t>>(input: A, r: Range<usize>) -> Self {
+                assert!(
+                    $l == r.end - r.start,
+                    "sub range is not the length of the output type "
+                );
+                $name::from_sub_pad(input, r)
+            }
+
+            pub fn copy_pad<A: SeqTrait<$t>>(v: A) -> Self {
                 assert!(v.len() <= $l);
                 let mut tmp = [<$t>::default(); $l];
                 for (i, x) in v.iter().enumerate() {
@@ -253,7 +248,7 @@ macro_rules! array_base {
                 }
                 Self(tmp.clone())
             }
-            pub fn from_exact_seq(v: &dyn SeqTrait<$t>) -> Self {
+            pub fn copy<A: SeqTrait<$t>>(v: A) -> Self {
                 assert!(v.len() == $l);
                 let mut tmp = [<$t>::default(); $l];
                 for (i, x) in v.iter().enumerate() {
@@ -261,57 +256,29 @@ macro_rules! array_base {
                 }
                 Self(tmp.clone())
             }
-            /// This takes an arbitrary length slice and takes at most $l bytes
-            /// zero-padded into $name.
-            pub fn from_slice_lazy(v: &[$t]) -> Self {
-                let mut tmp = [<$t>::default(); $l];
-                for i in 0..min($l, v.len()) {
-                    tmp[i] = v[i];
-                }
-                Self(tmp.clone())
-            }
-            /// This takes an arbitrary length vec and takes at most $l bytes
-            /// zero-padded into $name.
-            pub fn from_vec_lazy(v: Vec<$t>) -> Self {
-                let mut tmp = [<$t>::default(); $l];
-                for i in 0..min($l, v.len()) {
-                    tmp[i] = v[i];
-                }
-                Self(tmp.clone())
-            }
-            pub fn update(&mut self, start: usize, v: &dyn SeqTrait<$t>) {
+            pub fn update<A: SeqTrait<$t>>(mut self, start: usize, v: A) -> Self {
                 assert!(self.len() >= start + v.len());
                 for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
                 }
+                self
             }
-            pub fn update_sub(
-                &mut self,
+            pub fn update_sub<A: SeqTrait<$t>>(
+                mut self,
                 start_out: usize,
-                v: &dyn SeqTrait<$t>,
+                v: A,
                 start_in: usize,
                 len: usize,
-            ) {
+            ) -> Self {
                 assert!(self.len() >= start_out + len);
                 assert!(v.len() >= start_in + len);
                 for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
                     self[start_out + i] = *b;
                 }
+                self
             }
             pub fn len(&self) -> usize {
                 $l
-            }
-            /// Get an array for the given range `r`.
-            ///
-            /// #Panics
-            /// Panics if `self` is too short `start-end` is not equal to the result length.
-            pub fn get<A: SeqTrait<$t>>(&self, r: Range<usize>) -> A
-            where
-                A: Default + AsMut<[$t]>,
-            {
-                let mut a = A::default();
-                <A as AsMut<[$t]>>::as_mut(&mut a).copy_from_slice(&self[r]);
-                a
             }
         }
 
@@ -348,17 +315,7 @@ macro_rules! array_base {
                 &mut self.0[i]
             }
         }
-        impl Index<Range<usize>> for $name {
-            type Output = [$t];
-            fn index(&self, r: Range<usize>) -> &[$t] {
-                &self.0[r]
-            }
-        }
-        impl IndexMut<Range<usize>> for $name {
-            fn index_mut(&mut self, r: Range<usize>) -> &mut [$t] {
-                &mut self.0[r]
-            }
-        }
+
         impl Index<u8> for $name {
             type Output = $t;
             fn index(&self, i: u8) -> &$t {
@@ -397,21 +354,6 @@ macro_rules! array_base {
                 $name(tmp.clone())
             }
         }
-        impl From<$name> for Vec<$t> {
-            fn from(x: $name) -> Vec<$t> {
-                x.0.to_vec()
-            }
-        }
-        impl From<&[$t]> for $name {
-            fn from(x: &[$t]) -> $name {
-                $name::from_seq_pad(&Seq::from(x.to_vec()))
-            }
-        }
-        impl From<$name> for [$t; $l] {
-            fn from(x: $name) -> [$t; $l] {
-                x.0
-            }
-        }
 
         impl $name {
             pub fn random() -> $name {
@@ -434,16 +376,6 @@ macro_rules! array_base {
             }
         }
     };
-}
-
-pub fn to_array<A: SeqTrait<T>, T>(slice: &[T]) -> A
-where
-    A: Default + AsMut<[T]>,
-    T: Copy,
-{
-    let mut a = A::default();
-    <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
-    a
 }
 
 #[macro_export]
@@ -543,19 +475,27 @@ pub fn u32_from_le_bytes(s: U32Word) -> U32 {
 }
 
 pub fn u32_to_be_bytes(x: U32) -> U32Word {
-    U32Word::from(U32::to_bytes_be(&[x]).as_slice())
+    U32Word::from(U32::to_bytes_be(&[x]))
 }
 
 pub fn u128_from_le_bytes(s: U128Word) -> U128 {
     U128::from_bytes_le(&s.0)[0]
 }
 
+pub fn u128_from_be_bytes(s: U128Word) -> U128 {
+    U128::from_bytes_be(&s.0)[0]
+}
+
+pub fn u128_to_be_bytes(x: U128) -> U128Word {
+    U128Word::from(U128::to_bytes_be(&[x]))
+}
+
 pub fn u64_to_be_bytes(x: U64) -> U64Word {
-    U64Word::from(U64::to_bytes_be(&[x]).as_slice())
+    U64Word::from(U64::to_bytes_be(&[x]))
 }
 
 pub fn u64_to_le_bytes(x: U64) -> U64Word {
-    U64Word::from(U64::to_bytes_le(&[x]).as_slice())
+    U64Word::from(U64::to_bytes_le(&[x]))
 }
 
 pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<U64>) -> Bytes {
@@ -571,4 +511,77 @@ pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<U64>) -> Bytes {
         result[7 + (i * 8)] = U8::from((*v & U64::classify(0xFF00000000000000u64)) >> 56);
     }
     result
+}
+
+#[macro_export]
+macro_rules! secret_array {
+    ( $int_type: ident, [ $( $x:expr ),+ ] ) => {
+        [
+            $(
+                $int_type($x)
+            ),+
+        ]
+    }
+}
+
+#[macro_export]
+macro_rules! secret_bytes {
+    ([ $( $x:expr ),+ ] ) => {
+        secret_array!(U8, [$($x),+])
+    }
+}
+
+#[macro_export]
+macro_rules! assert_secret_array_eq {
+    ( $a1: expr, $a2: expr, $si: ident) => {
+        assert_eq!(
+            $a1.iter().map(|x| $si::declassify(*x)).collect::<Vec<_>>(),
+            $a2.iter().map(|x| $si::declassify(*x)).collect::<Vec<_>>()
+        );
+    };
+}
+
+#[macro_export]
+macro_rules! assert_bytes_eq {
+    ( $a1: expr, $a2: expr) => {
+        assert_secret_array_eq!($a1, $a2, U8)
+    };
+}
+
+#[macro_export]
+macro_rules! unsigned_integer {
+    ($name:ident, $bits:literal) => {
+        define_abstract_integer_checked!($name, $bits);
+    };
+}
+
+#[macro_export]
+macro_rules! field_integer {
+    ($name:ident, $base:ident, $max:expr) => {
+        define_refined_modular_integer!($name, $base, $max);
+
+        impl $name {
+            pub fn from_byte_seq_le<A: SeqTrait<U8>>(s: A) -> $name {
+                $name::from_bytes_le(
+                    s.iter()
+                        .map(|x| U8::declassify(*x))
+                        .collect::<Vec<_>>()
+                        .as_slice(),
+                )
+            }
+
+            pub fn to_byte_seq_le(self) -> Seq<U8> {
+                Seq::from(
+                    self.to_bytes_le()
+                        .iter()
+                        .map(|x| U8::classify(*x))
+                        .collect::<Vec<U8>>(),
+                )
+            }
+
+            pub fn from_secret_literal(x: U128) -> $name {
+                $name::from_literal(U128::declassify(x))
+            }
+        }
+    };
 }
