@@ -131,6 +131,32 @@ impl<T: Copy> SeqTrait<T> for Seq<T> {
     }
 }
 
+impl<T: Copy> Index<u8> for Seq<T> {
+    type Output = T;
+    fn index(&self, i: u8) -> &T {
+        &self.b[i as usize]
+    }
+}
+
+impl<T: Copy> IndexMut<u8> for Seq<T> {
+    fn index_mut(&mut self, i: u8) -> &mut T {
+        &mut self.b[i as usize]
+    }
+}
+
+impl<T: Copy> Index<u32> for Seq<T> {
+    type Output = T;
+    fn index(&self, i: u32) -> &T {
+        &self.b[i as usize]
+    }
+}
+
+impl<T: Copy> IndexMut<u32> for Seq<T> {
+    fn index_mut(&mut self, i: u32) -> &mut T {
+        &mut self.b[i as usize]
+    }
+}
+
 impl<T: Copy> Index<usize> for Seq<T> {
     type Output = T;
     fn index(&self, i: usize) -> &T {
@@ -331,6 +357,28 @@ macro_rules! array_base {
         impl IndexMut<Range<usize>> for $name {
             fn index_mut(&mut self, r: Range<usize>) -> &mut [$t] {
                 &mut self.0[r]
+            }
+        }
+        impl Index<u8> for $name {
+            type Output = $t;
+            fn index(&self, i: u8) -> &$t {
+                &self.0[i as usize]
+            }
+        }
+        impl IndexMut<u8> for $name {
+            fn index_mut(&mut self, i: u8) -> &mut $t {
+                &mut self.0[i as usize]
+            }
+        }
+        impl Index<u32> for $name {
+            type Output = $t;
+            fn index(&self, i: u32) -> &$t {
+                &self.0[i as usize]
+            }
+        }
+        impl IndexMut<u32> for $name {
+            fn index_mut(&mut self, i: u32) -> &mut $t {
+                &mut self.0[i as usize]
             }
         }
         impl Index<RangeFull> for $name {
