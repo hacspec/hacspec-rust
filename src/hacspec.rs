@@ -1,5 +1,24 @@
 //!
-//! hacspec Rust library.
+//! hacspec consists of three parts:
+//! * hacspec library
+//! * syntax checker
+//! * compiler
+//!
+//! # The hacspec library
+//!
+//! The hacspec library implements a comprehensive set of functions to implement
+//! succinct cryptographic specs that can be compiled to formal languages such
+//! as [F*](https://www.fstar-lang.org/).
+//!
+//! # The syntax checker
+//! TODO:
+//! * describe clippy extension
+//! * add `cargo hacspec check` command
+//!
+//! # The compiler
+//! TODO:
+//! * define compiler interface
+//! * add `cargo hacspec fstar` command
 //!
 #[macro_export]
 macro_rules! hacspec_crates {
@@ -57,7 +76,7 @@ pub struct Seq<T: Copy> {
     b: Vec<T>,
 }
 
-pub type Bytes = Seq<U8>;
+pub type ByteSeq = Seq<U8>;
 
 impl<T: Copy + Default> Seq<T> {
     pub fn new_len(l: usize) -> Self {
@@ -522,8 +541,8 @@ pub fn u64_to_le_bytes(x: U64) -> U64Word {
     U64Word::from(U64::to_bytes_le(&[x]))
 }
 
-pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<U64>) -> Bytes {
-    let mut result = Bytes::new_len(x.len() * 8);
+pub fn u64_slice_to_le_u8s(x: &dyn SeqTrait<U64>) -> ByteSeq {
+    let mut result = ByteSeq::new_len(x.len() * 8);
     for (i, v) in x.iter().enumerate().rev() {
         result[0 + (i * 8)] = U8::from(*v & U64::classify(0xFFu64));
         result[1 + (i * 8)] = U8::from((*v & U64::classify(0xFF00u64)) >> 8);
