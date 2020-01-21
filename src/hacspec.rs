@@ -331,105 +331,8 @@ impl From<&str> for Bytes {
 #[macro_export]
 macro_rules! bytes {
     ($name:ident,$l:expr) => {
-        /// Fixed length byte array.
-        /// Because Rust requires fixed length arrays to have a known size at
-        /// compile time there's no generic fixed length byte array here.
-        /// Use this to define the fixed length byte arrays needed in your code.
-        #[derive(Clone, Copy)]
-        pub struct $name([u8; $l]);
-
+        seq!($name, u8, $l);
         impl $name {
-            pub fn new() -> Self {
-                Self([0u8; $l])
-            }
-            pub fn capacity() -> usize {
-                $l
-            }
-            pub fn random() -> Self {
-                let mut tmp = [0u8; $l];
-                tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
-                Self(tmp.clone())
-            }
-            pub fn from_array(v: [u8; $l]) -> Self {
-                Self(v.clone())
-            }
-            pub fn from_slice(v: &[u8]) -> Self {
-                assert!(v.len() == $l);
-                let mut tmp = [0u8; $l];
-                tmp.copy_from_slice(v);
-                Self(tmp.clone())
-            }
-            pub fn from_slice_pad(v: &[u8]) -> Self {
-                assert!(v.len() <= $l);
-                let mut tmp = [0u8; $l];
-                for i in 0..v.len() {
-                    tmp[i] = v[i];
-                }
-                Self(tmp.clone())
-            }
-            /// This takes an arbitrary length slice and takes at most $l bytes
-            /// zero-padded into $name.
-            pub fn from_slice_lazy(v: &[u8]) -> Self {
-                let mut tmp = [0u8; $l];
-                for i in 0..min($l, v.len()) {
-                    tmp[i] = v[i];
-                }
-                Self(tmp.clone())
-            }
-            /// This takes an arbitrary length vec and takes at most $l bytes
-            /// zero-padded into $name.
-            pub fn from_vec_lazy(v: Vec<u8>) -> Self {
-                let mut tmp = [0u8; $l];
-                for i in 0..min($l, v.len()) {
-                    tmp[i] = v[i];
-                }
-                Self(tmp.clone())
-            }
-            pub fn from_byte_array(v: &dyn ByteArray) -> Self {
-                assert_eq!($l, v.len());
-                let mut tmp = [0u8; $l];
-                for (i, b) in v.raw().iter().enumerate() {
-                    tmp[i] = *b;
-                }
-                Self(tmp.clone())
-            }
-            pub fn update_raw(&mut self, start: usize, v: &[u8]) {
-                for (i, b) in v.iter().enumerate() {
-                    self[start + i] = *b;
-                }
-            }
-            pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
-                for (i, b) in v.raw().iter().enumerate() {
-                    self[start + i] = *b;
-                }
-            }
-            pub fn update_vec(&mut self, start: usize, v: Vec<u8>) {
-                for (i, b) in v.iter().enumerate() {
-                    self[start + i] = *b;
-                }
-            }
-            pub fn len(&self) -> usize {
-                $l
-            }
-            pub fn word(&self, start: usize) -> [u8; 4] {
-                assert!(self.len() >= start + 4);
-                let mut res = [0u8; 4];
-                res.copy_from_slice(&self[start..start + 4]);
-                res
-            }
-            /// Get an array for the given range `r`.
-            ///
-            /// #Panics
-            /// Panics if `self` is too short `start-end` is not equal to the result length.
-            pub fn get<A>(&self, r: Range<usize>) -> A
-            where
-                A: Default + AsMut<[u8]>,
-            {
-                let mut a = A::default();
-                <A as AsMut<[u8]>>::as_mut(&mut a).copy_from_slice(&self[r]);
-                a
-            }
-
             pub fn from_u64_slice_le(x: &[u64]) -> Self {
                 let mut result: [u8; $l] = [0; $l];
                 for i in (0..x.len()).rev() {
@@ -443,6 +346,128 @@ macro_rules! bytes {
                     result[7 + (i * 8)] = ((x[i] & 0xFF00000000000000u64) >> 56) as u8;
                 }
                 Self(result.clone())
+            }
+        }
+        // Build this array from a slice of the appropriate length of a u64s (little-endian).
+        // # PANICS
+        // Panics if the slice doesn't fit into this array.
+        impl From<&[u64]> for $name {
+            fn from(x: &[u64]) -> $name {
+                assert!($l == x.len() * 8);
+                $name::from_u64_slice_le(x)
+            }
+        }
+        // Build this array from an array of the appropriate length of a u64s (little-endian).
+        // # PANICS
+        // Panics if the slice doesn't fit into this array.
+        impl From<[u64; $l / 8]> for $name {
+            fn from(x: [u64; $l / 8]) -> $name {
+                $name::from_u64_slice_le(&x)
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! seq {
+    ($name:ident,$t:ty,$l:expr) => {
+        /// Fixed length byte array.
+        /// Because Rust requires fixed length arrays to have a known size at
+        /// compile time there's no generic fixed length byte array here.
+        /// Use this to define the fixed length byte arrays needed in your code.
+        #[derive(Clone, Copy)]
+        pub struct $name([$t; $l]);
+
+        impl $name {
+            pub fn new() -> Self {
+                Self([<$t>::default(); $l])
+            }
+            pub fn capacity() -> usize {
+                $l
+            }
+            pub fn random() -> Self {
+                let mut tmp = [<$t>::default(); $l];
+                tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
+                Self(tmp.clone())
+            }
+            pub fn from_array(v: [$t; $l]) -> Self {
+                Self(v.clone())
+            }
+            pub fn from_slice(v: &[$t]) -> Self {
+                assert!(v.len() == $l);
+                let mut tmp = [<$t>::default(); $l];
+                tmp.copy_from_slice(v);
+                Self(tmp.clone())
+            }
+            pub fn from_slice_pad(v: &[$t]) -> Self {
+                assert!(v.len() <= $l);
+                let mut tmp = [<$t>::default(); $l];
+                for i in 0..v.len() {
+                    tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
+            /// This takes an arbitrary length slice and takes at most $l bytes
+            /// zero-padded into $name.
+            pub fn from_slice_lazy(v: &[$t]) -> Self {
+                let mut tmp = [<$t>::default(); $l];
+                for i in 0..min($l, v.len()) {
+                    tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
+            /// This takes an arbitrary length vec and takes at most $l bytes
+            /// zero-padded into $name.
+            pub fn from_vec_lazy(v: Vec<$t>) -> Self {
+                let mut tmp = [<$t>::default(); $l];
+                for i in 0..min($l, v.len()) {
+                    tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
+            pub fn from_byte_array(v: &dyn ByteArray) -> Self {
+                assert_eq!($l, v.len());
+                let mut tmp = [<$t>::default(); $l];
+                for (i, b) in v.raw().iter().enumerate() {
+                    tmp[i] = *b;
+                }
+                Self(tmp.clone())
+            }
+            pub fn update_raw(&mut self, start: usize, v: &[$t]) {
+                for (i, b) in v.iter().enumerate() {
+                    self[start + i] = *b;
+                }
+            }
+            pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
+                for (i, b) in v.raw().iter().enumerate() {
+                    self[start + i] = *b;
+                }
+            }
+            pub fn update_vec(&mut self, start: usize, v: Vec<$t>) {
+                for (i, b) in v.iter().enumerate() {
+                    self[start + i] = *b;
+                }
+            }
+            pub fn len(&self) -> usize {
+                $l
+            }
+            pub fn word(&self, start: usize) -> [$t; 4] {
+                assert!(self.len() >= start + 4);
+                let mut res = [<$t>::default(); 4];
+                res.copy_from_slice(&self[start..start + 4]);
+                res
+            }
+            /// Get an array for the given range `r`.
+            ///
+            /// #Panics
+            /// Panics if `self` is too short `start-end` is not equal to the result length.
+            pub fn get<A>(&self, r: Range<usize>) -> A
+            where
+                A: Default + AsMut<[$t]>,
+            {
+                let mut a = A::default();
+                <A as AsMut<[$t]>>::as_mut(&mut a).copy_from_slice(&self[r]);
+                a
             }
 
             /// Convert a `Field` to a byte array (little endian).
@@ -460,55 +485,55 @@ macro_rules! bytes {
                 $name::new()
             }
         }
-        impl AsMut<[u8]> for $name {
-            fn as_mut(&mut self) -> &mut [u8] {
+        impl AsMut<[$t]> for $name {
+            fn as_mut(&mut self) -> &mut [$t] {
                 &mut self.0
             }
         }
         impl ByteArray for $name {
-            fn raw<'a>(&'a self) -> &'a [u8] {
+            fn raw<'a>(&'a self) -> &'a [$t] {
                 &self.0
             }
             fn len(&self) -> usize {
                 $l
             }
-            fn iter(&self) -> std::slice::Iter<u8> {
+            fn iter(&self) -> std::slice::Iter<$t> {
                 self.0.iter()
             }
         }
 
         impl Index<usize> for $name {
-            type Output = u8;
-            fn index(&self, i: usize) -> &u8 {
+            type Output = $t;
+            fn index(&self, i: usize) -> &$t {
                 &self.0[i]
             }
         }
-        impl Index<u8> for $name {
-            type Output = u8;
-            fn index(&self, i: u8) -> &u8 {
+        impl Index<$t> for $name {
+            type Output = $t;
+            fn index(&self, i: $t) -> &$t {
                 &self.0[usize::from(i)]
             }
         }
         impl Index<i32> for $name {
-            type Output = u8;
-            fn index(&self, i: i32) -> &u8 {
+            type Output = $t;
+            fn index(&self, i: i32) -> &$t {
                 &self.0[i as usize] // TODO: this conversion might be bad
             }
         }
         impl IndexMut<usize> for $name {
-            fn index_mut(&mut self, i: usize) -> &mut u8 {
+            fn index_mut(&mut self, i: usize) -> &mut $t {
                 &mut self.0[i]
             }
         }
         impl Index<Range<usize>> for $name {
-            type Output = [u8];
-            fn index(&self, r: Range<usize>) -> &[u8] {
+            type Output = [$t];
+            fn index(&self, r: Range<usize>) -> &[$t] {
                 &self.0[r]
             }
         }
         impl Index<RangeFull> for $name {
-            type Output = [u8];
-            fn index(&self, r: RangeFull) -> &[u8] {
+            type Output = [$t];
+            fn index(&self, r: RangeFull) -> &[$t] {
                 &self.0[r]
             }
         }
@@ -522,51 +547,34 @@ macro_rules! bytes {
                 self.0[..] == other.0[..]
             }
         }
-        impl From<Vec<u8>> for $name {
-            fn from(x: Vec<u8>) -> $name {
+        impl From<Vec<$t>> for $name {
+            fn from(x: Vec<$t>) -> $name {
                 assert!(x.len() <= $l);
-                let mut tmp = [0u8; $l];
+                let mut tmp = [<$t>::default(); $l];
                 for (i, e) in x.iter().enumerate() {
                     tmp[i] = *e;
                 }
                 $name(tmp.clone())
             }
         }
-        impl From<$name> for Vec<u8> {
-            fn from(x: $name) -> Vec<u8> {
+        impl From<$name> for Vec<$t> {
+            fn from(x: $name) -> Vec<$t> {
                 x.0.to_vec()
             }
         }
-        impl From<[u8; $l]> for $name {
-            fn from(x: [u8; $l]) -> $name {
+        impl From<[$t; $l]> for $name {
+            fn from(x: [$t; $l]) -> $name {
                 $name(x.clone())
             }
         }
-        impl From<&[u8]> for $name {
-            fn from(x: &[u8]) -> $name {
+        impl From<&[$t]> for $name {
+            fn from(x: &[$t]) -> $name {
                 $name::from_slice_pad(x)
             }
         }
-        impl From<$name> for [u8; $l] {
-            fn from(x: $name) -> [u8; $l] {
+        impl From<$name> for [$t; $l] {
+            fn from(x: $name) -> [$t; $l] {
                 x.0
-            }
-        }
-        /// Build this array from a slice of the appropriate length of a u64s (little-endian).
-        /// # PANICS
-        /// Panics if the slice doesn't fit into this array.
-        impl From<&[u64]> for $name {
-            fn from(x: &[u64]) -> $name {
-                assert!($l == x.len() * 8);
-                $name::from_u64_slice_le(x)
-            }
-        }
-        /// Build this array from an array of the appropriate length of a u64s (little-endian).
-        /// # PANICS
-        /// Panics if the slice doesn't fit into this array.
-        impl From<[u64; $l / 8]> for $name {
-            fn from(x: [u64; $l / 8]) -> $name {
-                $name::from_u64_slice_le(&x)
             }
         }
         /// Read hex string to bytes.
