@@ -511,7 +511,7 @@ macro_rules! bytes {
         impl Index<i32> for $name {
             type Output = u8;
             fn index(&self, i: i32) -> &u8 {
-                debug_assert!(i > 0, "Invalid index");
+                debug_assert!(i >= 0, "Invalid index");
                 &self.0[i as usize]
             }
         }
