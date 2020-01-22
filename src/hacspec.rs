@@ -347,6 +347,43 @@ macro_rules! bytes {
                 }
                 Self(result.clone())
             }
+            pub fn from_byte_array(v: &dyn ByteArray) -> Self {
+                assert_eq!($l, v.len());
+                let mut tmp = [<$t>::default(); $l];
+                for (i, b) in v.raw().iter().enumerate() {
+                    tmp[i] = *b;
+                }
+                Self(tmp.clone())
+            }
+            pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
+                for (i, b) in v.raw().iter().enumerate() {
+                    self[start + i] = *b;
+                }
+            }
+            pub fn random() -> Self {
+                let mut tmp = [<$t>::default(); $l];
+                tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
+                Self(tmp.clone())
+            }
+            /// Convert a `Field` to a byte array (little endian).
+            /// TODO: The `From` trait doesn't work for this for some reason.
+            pub fn from_field<T>(f: T) -> Self
+            where
+                T: Field,
+            {
+                $name::from(&f.to_bytes_le()[..])
+            }
+        }
+        impl ByteArray for $name {
+            fn raw<'a>(&'a self) -> &'a [$t] {
+                &self.0
+            }
+            fn len(&self) -> usize {
+                $l
+            }
+            fn iter(&self) -> std::slice::Iter<$t> {
+                self.0.iter()
+            }
         }
         // Build this array from a slice of the appropriate length of a u64s (little-endian).
         // # PANICS
@@ -363,6 +400,12 @@ macro_rules! bytes {
         impl From<[u64; $l / 8]> for $name {
             fn from(x: [u64; $l / 8]) -> $name {
                 $name::from_u64_slice_le(&x)
+            }
+        }
+        /// Read hex string to bytes.
+        impl From<&str> for $name {
+            fn from(s: &str) -> $name {
+                $name::from(hex_string_to_bytes(s))
             }
         }
     }
@@ -384,11 +427,6 @@ macro_rules! seq {
             }
             pub fn capacity() -> usize {
                 $l
-            }
-            pub fn random() -> Self {
-                let mut tmp = [<$t>::default(); $l];
-                tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
-                Self(tmp.clone())
             }
             pub fn from_array(v: [$t; $l]) -> Self {
                 Self(v.clone())
@@ -425,21 +463,8 @@ macro_rules! seq {
                 }
                 Self(tmp.clone())
             }
-            pub fn from_byte_array(v: &dyn ByteArray) -> Self {
-                assert_eq!($l, v.len());
-                let mut tmp = [<$t>::default(); $l];
-                for (i, b) in v.raw().iter().enumerate() {
-                    tmp[i] = *b;
-                }
-                Self(tmp.clone())
-            }
             pub fn update_raw(&mut self, start: usize, v: &[$t]) {
                 for (i, b) in v.iter().enumerate() {
-                    self[start + i] = *b;
-                }
-            }
-            pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
-                for (i, b) in v.raw().iter().enumerate() {
                     self[start + i] = *b;
                 }
             }
@@ -469,15 +494,6 @@ macro_rules! seq {
                 <A as AsMut<[$t]>>::as_mut(&mut a).copy_from_slice(&self[r]);
                 a
             }
-
-            /// Convert a `Field` to a byte array (little endian).
-            /// TODO: The `From` trait doesn't work for this for some reason.
-            pub fn from_field<T>(f: T) -> Self
-            where
-                T: Field,
-            {
-                $name::from(&f.to_bytes_le()[..])
-            }
         }
 
         impl Default for $name {
@@ -488,17 +504,6 @@ macro_rules! seq {
         impl AsMut<[$t]> for $name {
             fn as_mut(&mut self) -> &mut [$t] {
                 &mut self.0
-            }
-        }
-        impl ByteArray for $name {
-            fn raw<'a>(&'a self) -> &'a [$t] {
-                &self.0
-            }
-            fn len(&self) -> usize {
-                $l
-            }
-            fn iter(&self) -> std::slice::Iter<$t> {
-                self.0.iter()
             }
         }
 
@@ -575,12 +580,6 @@ macro_rules! seq {
         impl From<$name> for [$t; $l] {
             fn from(x: $name) -> [$t; $l] {
                 x.0
-            }
-        }
-        /// Read hex string to bytes.
-        impl From<&str> for $name {
-            fn from(s: &str) -> $name {
-                $name::from(hex_string_to_bytes(s))
             }
         }
     };
