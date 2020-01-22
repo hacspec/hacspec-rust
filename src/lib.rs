@@ -74,8 +74,8 @@ pub fn to_u32l(x: &[u8]) -> u32 {
 
 pub fn from_u32l(x: u32) -> (u8, u8, u8, u8) {
     (
-        ((x & 0xFF000000) >> 24) as u8,
-        ((x & 0xFF0000) >> 16) as u8,
+        ((x & 0xFF00_0000) >> 24) as u8,
+        ((x & 0x00FF_0000) >> 16) as u8,
         ((x & 0xFF00) >> 8) as u8,
         (x & 0xFF) as u8,
     )
@@ -92,9 +92,10 @@ pub fn hex_string_to_bytes(s: &str) -> Vec<u8> {
 
 /// Common trait for all byte arrays.
 pub trait ByteArray {
-    fn raw<'a>(&'a self) -> &'a [u8];
+    fn raw(&self) -> &[u8];
     fn len(&self) -> usize;
     fn iter(&self) -> std::slice::Iter<u8>;
+    fn is_empty(&self) -> bool;
 }
 
 // ======================== Variable length arrays ========================== //
@@ -104,12 +105,17 @@ pub struct ByteSlice<'a> {
     b: &'a [u8],
 }
 impl<'a> ByteSlice<'a> {
-    fn new(b_in: &'a Bytes) -> ByteSlice<'a> {
+    fn new(b_in: &'a Bytes) -> Self {
         Self { b: &b_in[..] }
     }
     pub fn len(&self) -> usize {
         self.b.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.b.is_empty()
+    }
+
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
     pub fn get<A>(&self, r: Range<usize>) -> A
     where
@@ -145,7 +151,7 @@ pub struct Bytes {
 }
 
 impl Bytes {
-    pub fn get_slice<'a>(&'a self) -> ByteSlice<'a> {
+    pub fn get_slice(&self) -> ByteSlice {
         ByteSlice::new(&self)
     }
     pub fn new_len(l: usize) -> Self {
@@ -160,7 +166,7 @@ impl Bytes {
         self.b.is_empty()
     }
     pub fn from_vec(v: Vec<u8>) -> Self {
-        Self { b: v.clone() }
+        Self { b: v }
     }
     pub fn from_array(v: &[u8]) -> Self {
         Self { b: v.to_vec() }
@@ -169,7 +175,7 @@ impl Bytes {
         self.b.as_slice()
     }
     pub fn extend(&mut self, v: Bytes) {
-        self.b.extend(v.b.clone());
+        self.b.extend(v.b);
     }
     pub fn extend_from_slice(&mut self, v: &[u8]) {
         self.b.extend(v);
@@ -246,8 +252,8 @@ impl Bytes {
     pub fn from_u32l(x: u32) -> Self {
         Bytes {
             b: vec![
-                ((x & 0xFF000000) >> 24) as u8,
-                ((x & 0xFF0000) >> 16) as u8,
+                ((x & 0xFF00_0000) >> 24) as u8,
+                ((x & 0x00FF_0000) >> 16) as u8,
                 ((x & 0xFF00) >> 8) as u8,
                 (x & 0xFF) as u8,
             ],
@@ -260,14 +266,14 @@ impl Bytes {
         debug_assert!(!self.is_empty());
         let mut r = self[0] as u128;
         for i in 1..self.len() {
-            r |= (self[i] as u128) << i * 8;
+            r |= (self[i] as u128) << (i * 8);
         }
         r
     }
 }
 
 impl ByteArray for Bytes {
-    fn raw<'a>(&'a self) -> &'a [u8] {
+    fn raw<'a>(&self) -> &[u8] {
         &self.b
     }
     fn len(&self) -> usize {
@@ -275,6 +281,9 @@ impl ByteArray for Bytes {
     }
     fn iter(&self) -> std::slice::Iter<u8> {
         self.b.iter()
+    }
+    fn is_empty(&self) -> bool {
+        self.b.is_empty()
     }
 }
 
@@ -317,7 +326,7 @@ impl From<&[u8]> for Bytes {
 }
 impl From<Vec<u8>> for Bytes {
     fn from(x: Vec<u8>) -> Bytes {
-        Self { b: x.clone() }
+        Self { b: x }
     }
 }
 impl Into<Vec<u8>> for Bytes {
@@ -472,7 +481,7 @@ macro_rules! bytes {
             }
         }
         impl ByteArray for $name {
-            fn raw<'a>(&'a self) -> &'a [u8] {
+            fn raw(&self) -> &[u8] {
                 &self.0
             }
             fn len(&self) -> usize {
@@ -480,6 +489,10 @@ macro_rules! bytes {
             }
             fn iter(&self) -> std::slice::Iter<u8> {
                 self.0.iter()
+            }
+
+            fn is_empty(&self) -> bool {
+                $l == 0
             }
         }
 
@@ -498,7 +511,8 @@ macro_rules! bytes {
         impl Index<i32> for $name {
             type Output = u8;
             fn index(&self, i: i32) -> &u8 {
-                &self.0[i as usize] // TODO: this conversion might be bad
+                debug_assert!(i > 0, "Invalid index");
+                &self.0[i as usize]
             }
         }
         impl IndexMut<usize> for $name {
