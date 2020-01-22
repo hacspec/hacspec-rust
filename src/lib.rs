@@ -20,13 +20,18 @@
 //! * define compiler interface
 //! * add `cargo hacspec fstar` command
 //!
-extern crate rand;
 
+use rand;
 use std::cmp::min;
 use std::convert::AsMut;
 use std::num::ParseIntError;
 use std::ops::{Index, IndexMut, Range, RangeFull};
 
+pub mod prelude;
+
+use crate::prelude::*;
+
+#[deprecated(note = "Please use the prelude module")]
 #[macro_export]
 macro_rules! hacspec_imports {
     () => {
@@ -39,6 +44,7 @@ macro_rules! hacspec_imports {
     };
 }
 
+#[deprecated(note = "Please use the prelude module")]
 #[macro_export]
 macro_rules! hacspec_crates {
     () => {
@@ -62,21 +68,21 @@ pub fn get_random_bytes(l: usize) -> Vec<u8> {
 }
 
 pub fn to_u32l(x: &[u8]) -> u32 {
-    assert!(x.len() == 4);
+    debug_assert!(x.len() == 4);
     u32::from_le_bytes(to_array(&x[0..4]))
 }
 
 pub fn from_u32l(x: u32) -> (u8, u8, u8, u8) {
     (
-        ((x & 0xFF000000) >> 24) as u8,
-        ((x & 0xFF0000) >> 16) as u8,
+        ((x & 0xFF00_0000) >> 24) as u8,
+        ((x & 0x00FF_0000) >> 16) as u8,
         ((x & 0xFF00) >> 8) as u8,
         (x & 0xFF) as u8,
     )
 }
 
 pub fn hex_string_to_bytes(s: &str) -> Vec<u8> {
-    assert!(s.len() % 2 == 0);
+    debug_assert!(s.len() % 2 == 0);
     let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
@@ -86,9 +92,10 @@ pub fn hex_string_to_bytes(s: &str) -> Vec<u8> {
 
 /// Common trait for all byte arrays.
 pub trait ByteArray {
-    fn raw<'a>(&'a self) -> &'a [u8];
+    fn raw(&self) -> &[u8];
     fn len(&self) -> usize;
     fn iter(&self) -> std::slice::Iter<u8>;
+    fn is_empty(&self) -> bool;
 }
 
 // ======================== Variable length arrays ========================== //
@@ -98,12 +105,17 @@ pub struct ByteSlice<'a> {
     b: &'a [u8],
 }
 impl<'a> ByteSlice<'a> {
-    fn new(b_in: &'a Bytes) -> ByteSlice<'a> {
+    fn new(b_in: &'a Bytes) -> Self {
         Self { b: &b_in[..] }
     }
     pub fn len(&self) -> usize {
         self.b.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.b.is_empty()
+    }
+
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
     pub fn get<A>(&self, r: Range<usize>) -> A
     where
@@ -139,7 +151,7 @@ pub struct Bytes {
 }
 
 impl Bytes {
-    pub fn get_slice<'a>(&'a self) -> ByteSlice<'a> {
+    pub fn get_slice(&self) -> ByteSlice {
         ByteSlice::new(&self)
     }
     pub fn new_len(l: usize) -> Self {
@@ -154,7 +166,7 @@ impl Bytes {
         self.b.is_empty()
     }
     pub fn from_vec(v: Vec<u8>) -> Self {
-        Self { b: v.clone() }
+        Self { b: v }
     }
     pub fn from_array(v: &[u8]) -> Self {
         Self { b: v.to_vec() }
@@ -163,7 +175,7 @@ impl Bytes {
         self.b.as_slice()
     }
     pub fn extend(&mut self, v: Bytes) {
-        self.b.extend(v.b.clone());
+        self.b.extend(v.b);
     }
     pub fn extend_from_slice(&mut self, v: &[u8]) {
         self.b.extend(v);
@@ -172,25 +184,25 @@ impl Bytes {
         self.b.push(v);
     }
     pub fn update_raw(&mut self, start: usize, v: &[u8]) {
-        assert!(self.len() >= start + v.len());
+        debug_assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
     }
     pub fn update_vec(&mut self, start: usize, v: Vec<u8>) {
-        assert!(self.len() >= start + v.len());
+        debug_assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
     }
     pub fn update(&mut self, start: usize, v: &dyn ByteArray) {
-        assert!(self.len() >= start + v.len());
+        debug_assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
     }
     pub fn update_slice(&mut self, start: usize, v: ByteSlice) {
-        assert!(self.len() >= start + v.len());
+        debug_assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
@@ -233,15 +245,15 @@ impl Bytes {
     /// # PANICS
     /// Panics if self.len() != 4.
     pub fn to_u32l(&self) -> u32 {
-        assert!(self.len() == 4);
+        debug_assert!(self.len() == 4);
         (self[3] as u32) << 24 | (self[2] as u32) << 16 | (self[1] as u32) << 8 | (self[0] as u32)
     }
     /// Read a u32 into a byte array.
     pub fn from_u32l(x: u32) -> Self {
         Bytes {
             b: vec![
-                ((x & 0xFF000000) >> 24) as u8,
-                ((x & 0xFF0000) >> 16) as u8,
+                ((x & 0xFF00_0000) >> 24) as u8,
+                ((x & 0x00FF_0000) >> 16) as u8,
                 ((x & 0xFF00) >> 8) as u8,
                 (x & 0xFF) as u8,
             ],
@@ -251,17 +263,17 @@ impl Bytes {
     /// # PANICS
     /// Panics if there's nothing to convert, i.e. self.b.is_empty().
     pub fn to_le_uint(&self) -> u128 {
-        assert!(!self.is_empty());
+        debug_assert!(!self.is_empty());
         let mut r = self[0] as u128;
         for i in 1..self.len() {
-            r |= (self[i] as u128) << i * 8;
+            r |= (self[i] as u128) << (i * 8);
         }
         r
     }
 }
 
 impl ByteArray for Bytes {
-    fn raw<'a>(&'a self) -> &'a [u8] {
+    fn raw<'a>(&self) -> &[u8] {
         &self.b
     }
     fn len(&self) -> usize {
@@ -269,6 +281,9 @@ impl ByteArray for Bytes {
     }
     fn iter(&self) -> std::slice::Iter<u8> {
         self.b.iter()
+    }
+    fn is_empty(&self) -> bool {
+        self.b.is_empty()
     }
 }
 
@@ -311,7 +326,7 @@ impl From<&[u8]> for Bytes {
 }
 impl From<Vec<u8>> for Bytes {
     fn from(x: Vec<u8>) -> Bytes {
-        Self { b: x.clone() }
+        Self { b: x }
     }
 }
 impl Into<Vec<u8>> for Bytes {
@@ -348,7 +363,7 @@ macro_rules! bytes {
                 Self(result.clone())
             }
             pub fn from_byte_array(v: &dyn ByteArray) -> Self {
-                assert_eq!($l, v.len());
+                debug_assert_eq!($l, v.len());
                 let mut tmp = [<$t>::default(); $l];
                 for (i, b) in v.raw().iter().enumerate() {
                     tmp[i] = *b;
@@ -375,28 +390,31 @@ macro_rules! bytes {
             }
         }
         impl ByteArray for $name {
-            fn raw<'a>(&'a self) -> &'a [$t] {
+            fn raw(&self) -> &[u8] {
                 &self.0
             }
             fn len(&self) -> usize {
                 $l
             }
-            fn iter(&self) -> std::slice::Iter<$t> {
+            fn iter(&self) -> std::slice::Iter<u8> {
                 self.0.iter()
             }
+            fn is_empty(&self) -> bool {
+                $l == 0
+            }
         }
-        // Build this array from a slice of the appropriate length of a u64s (little-endian).
-        // # PANICS
-        // Panics if the slice doesn't fit into this array.
+        /// Build this array from a slice of the appropriate length of a u64s (little-endian).
+        /// # PANICS
+        /// Panics if the slice doesn't fit into this array.
         impl From<&[u64]> for $name {
             fn from(x: &[u64]) -> $name {
-                assert!($l == x.len() * 8);
+                debug_assert!($l == x.len() * 8);
                 $name::from_u64_slice_le(x)
             }
         }
-        // Build this array from an array of the appropriate length of a u64s (little-endian).
-        // # PANICS
-        // Panics if the slice doesn't fit into this array.
+        /// Build this array from an array of the appropriate length of a u64s (little-endian).
+        /// # PANICS
+        /// Panics if the slice doesn't fit into this array.
         impl From<[u64; $l / 8]> for $name {
             fn from(x: [u64; $l / 8]) -> $name {
                 $name::from_u64_slice_le(&x)
@@ -432,14 +450,14 @@ macro_rules! seq {
                 Self(v.clone())
             }
             pub fn from_slice(v: &[$t]) -> Self {
-                assert!(v.len() == $l);
-                let mut tmp = [<$t>::default(); $l];
+                debug_assert!(v.len() == $l);
+                let mut tmp = [$t::default(); $l];
                 tmp.copy_from_slice(v);
                 Self(tmp.clone())
             }
             pub fn from_slice_pad(v: &[$t]) -> Self {
-                assert!(v.len() <= $l);
-                let mut tmp = [<$t>::default(); $l];
+                debug_assert!(v.len() <= $l);
+                let mut tmp = [$t::default(); $l];
                 for i in 0..v.len() {
                     tmp[i] = v[i];
                 }
@@ -477,7 +495,7 @@ macro_rules! seq {
                 $l
             }
             pub fn word(&self, start: usize) -> [$t; 4] {
-                assert!(self.len() >= start + 4);
+                debug_assert!(self.len() >= start + 4);
                 let mut res = [<$t>::default(); 4];
                 res.copy_from_slice(&self[start..start + 4]);
                 res
@@ -522,7 +540,8 @@ macro_rules! seq {
         impl Index<i32> for $name {
             type Output = $t;
             fn index(&self, i: i32) -> &$t {
-                &self.0[i as usize] // TODO: this conversion might be bad
+                debug_assert!(i >= 0, "Invalid index");
+                &self.0[i as usize]
             }
         }
         impl IndexMut<usize> for $name {
@@ -554,7 +573,7 @@ macro_rules! seq {
         }
         impl From<Vec<$t>> for $name {
             fn from(x: Vec<$t>) -> $name {
-                assert!(x.len() <= $l);
+                debug_assert!(x.len() <= $l);
                 let mut tmp = [<$t>::default(); $l];
                 for (i, e) in x.iter().enumerate() {
                     tmp[i] = *e;
