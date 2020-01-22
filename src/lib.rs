@@ -364,7 +364,7 @@ macro_rules! bytes {
             }
             pub fn from_byte_array(v: &dyn ByteArray) -> Self {
                 debug_assert_eq!($l, v.len());
-                let mut tmp = [<$t>::default(); $l];
+                let mut tmp = [u8::default(); $l];
                 for (i, b) in v.raw().iter().enumerate() {
                     tmp[i] = *b;
                 }
@@ -376,7 +376,7 @@ macro_rules! bytes {
                 }
             }
             pub fn random() -> Self {
-                let mut tmp = [<$t>::default(); $l];
+                let mut tmp = [u8::default(); $l];
                 tmp.copy_from_slice(&get_random_bytes($l)[..$l]);
                 Self(tmp.clone())
             }
@@ -387,6 +387,14 @@ macro_rules! bytes {
                 T: Field,
             {
                 $name::from(&f.to_bytes_le()[..])
+            }
+            // TODO: move to seq
+            pub fn to_uint32s_be(&self) -> [u32; $l/4] {
+                let mut out = [0u32; $l/4];
+                for (i, block) in self.0.chunks(4).enumerate() {
+                    out[i] = u32::from_be_bytes(to_array(block));
+                }
+                out
             }
         }
         impl ByteArray for $name {
@@ -451,13 +459,13 @@ macro_rules! seq {
             }
             pub fn from_slice(v: &[$t]) -> Self {
                 debug_assert!(v.len() == $l);
-                let mut tmp = [$t::default(); $l];
+                let mut tmp = [<$t>::default(); $l];
                 tmp.copy_from_slice(v);
                 Self(tmp.clone())
             }
             pub fn from_slice_pad(v: &[$t]) -> Self {
                 debug_assert!(v.len() <= $l);
-                let mut tmp = [$t::default(); $l];
+                let mut tmp = [<$t>::default(); $l];
                 for i in 0..v.len() {
                     tmp[i] = v[i];
                 }
@@ -534,7 +542,8 @@ macro_rules! seq {
         impl Index<$t> for $name {
             type Output = $t;
             fn index(&self, i: $t) -> &$t {
-                &self.0[usize::from(i)]
+                debug_assert!(i <= <$t>::max_value());
+                &self.0[i as usize]
             }
         }
         impl Index<i32> for $name {

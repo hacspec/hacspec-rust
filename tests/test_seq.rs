@@ -1,7 +1,4 @@
-use hacspec::*;
-
-hacspec_crates!();
-hacspec_imports!();
+use hacspec::prelude::*;
 
 #[test]
 fn test_seq_u32() {
