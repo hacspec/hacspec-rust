@@ -6,15 +6,12 @@ edition = "2018"
 description = "A set of tools to write succinct crypto specs."
 license = "Apache-2.0"
 
-[lib]
-path = "src/hacspec.rs"
-
 [dependencies]
-rand = "0.6" # ok?
-
-[dev-dependencies]
+rand = "0.7" # ok?
 wrapping_arithmetic = "0.1"
 num = "0.2"
 paste = "0.1"
 uint = { git = "https://github.com/franziskuskiefer/rust-uint-n" }
+
+[dev-dependencies]
 # uint = { path = "../uint_n" }
