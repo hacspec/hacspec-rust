@@ -115,6 +115,9 @@ impl<'a> ByteSlice<'a> {
     pub fn is_empty(&self) -> bool {
         self.b.is_empty()
     }
+    pub fn chunks(&self, chunk_size: usize) -> std::slice::Chunks<'_, u8> {
+        self.b.chunks(chunk_size)
+    }
 
     /// **Panics** if `self` is too short `start-end` is not equal to the result length.
     pub fn get<A>(&self, r: Range<usize>) -> A
@@ -396,6 +399,12 @@ macro_rules! bytes {
                 }
                 out
             }
+            pub fn to_hex(&self) -> String {
+                let strs: Vec<String> = self.0.iter()
+                               .map(|b| format!("{:02x}", b))
+                               .collect();
+                strs.join("")
+            }
         }
         impl ByteArray for $name {
             fn raw(&self) -> &[u8] {
@@ -519,6 +528,17 @@ macro_rules! seq {
                 let mut a = A::default();
                 <A as AsMut<[$t]>>::as_mut(&mut a).copy_from_slice(&self[r]);
                 a
+            }
+            pub fn to_bytes_be(&self) -> [u8; $l*core::mem::size_of::<$t>()] {
+                const factor: usize = core::mem::size_of::<$t>();
+                let mut out = [0u8; $l*factor];
+                for i in 0..$l {
+                    let tmp = <$t>::from(self[i]).to_be_bytes();
+                    for j in 0..factor {
+                        out[i*factor+j] = tmp[j];
+                    }
+                }
+                out
             }
         }
 
@@ -644,3 +664,4 @@ where
     <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
     a
 }
+seq!(TestSeq, u32, 64);
