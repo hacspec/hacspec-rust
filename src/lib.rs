@@ -157,6 +157,11 @@ impl Bytes {
     pub fn get_slice(&self) -> ByteSlice {
         ByteSlice::new(&self)
     }
+    pub fn new() -> Self {
+        Self {
+            b: Vec::<u8>::new()
+        }
+    }
     pub fn new_len(l: usize) -> Self {
         Self { b: vec![0u8; l] }
     }
@@ -273,6 +278,13 @@ impl Bytes {
         }
         r
     }
+
+    pub fn to_hex(&self) -> String {
+        let strs: Vec<String> = self.b.iter()
+                       .map(|b| format!("{:02x}", b))
+                       .collect();
+        strs.join("")
+    }
 }
 
 impl ByteArray for Bytes {
@@ -351,6 +363,13 @@ macro_rules! bytes {
     ($name:ident,$l:expr) => {
         seq!($name, u8, $l);
         impl $name {
+            pub fn from_vlbytes_lazy(v: Bytes) -> Self {
+                let mut tmp = [u8::default(); $l];
+                for i in 0..min($l, v.len()) {
+                    tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
             pub fn from_u64_slice_le(x: &[u64]) -> Self {
                 let mut result: [u8; $l] = [0; $l];
                 for i in (0..x.len()).rev() {
@@ -399,6 +418,7 @@ macro_rules! bytes {
                 }
                 out
             }
+            // TODO: move out (duplicate code)
             pub fn to_hex(&self) -> String {
                 let strs: Vec<String> = self.0.iter()
                                .map(|b| format!("{:02x}", b))
@@ -630,6 +650,16 @@ macro_rules! seq {
                 x.0
             }
         }
+        impl std::ops::BitXor for $name {
+            type Output = Self;
+            fn bitxor(self, rhs: Self) -> Self::Output {
+                let mut out = Self::new();
+                for (a, (b, c)) in out.0.iter_mut().zip(self.0.iter().zip(rhs.0.iter())) {
+                    *a = b ^ c;
+                }
+                out
+            }
+        }
     };
 }
 
@@ -664,4 +694,9 @@ where
     <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
     a
 }
-seq!(TestSeq, u32, 64);
+
+/// Compute ceil(a/b), returning a u64.
+/// Note that float-uint conversion might be lossy.
+pub fn div_ceil(a: usize, b: usize) -> u64 {
+    (f64::ceil((a as f64)/(b as f64))) as u64
+}
