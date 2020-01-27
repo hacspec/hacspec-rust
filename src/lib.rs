@@ -24,10 +24,11 @@
 use rand;
 use std::cmp::min;
 use std::convert::AsMut;
-use std::num::ParseIntError;
 use std::ops::{Index, IndexMut, Range, RangeFull};
 
+pub mod util;
 pub mod prelude;
+pub mod test_vectors;
 
 use crate::prelude::*;
 
@@ -79,15 +80,6 @@ pub fn from_u32l(x: u32) -> (u8, u8, u8, u8) {
         ((x & 0xFF00) >> 8) as u8,
         (x & 0xFF) as u8,
     )
-}
-
-pub fn hex_string_to_bytes(s: &str) -> Vec<u8> {
-    debug_assert!(s.len() % 2 == 0);
-    let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-        .collect();
-    b.expect("Error parsing hex string")
 }
 
 /// Common trait for all byte arrays.
@@ -355,6 +347,12 @@ impl From<&str> for Bytes {
         Bytes::from(hex_string_to_bytes(s))
     }
 }
+impl From<String> for Bytes {
+    fn from(s: String) -> Bytes {
+        Bytes::from(hex_string_to_bytes(&s))
+    }
+}
+
 
 // ========================== Fixed length arrays =========================== //
 
@@ -463,6 +461,11 @@ macro_rules! bytes {
                 $name::from(hex_string_to_bytes(s))
             }
         }
+        impl From<String> for $name {
+            fn from(s: String) -> $name {
+                $name::from(hex_string_to_bytes(&s))
+            }
+        }
     }
 }
 
@@ -550,12 +553,12 @@ macro_rules! seq {
                 a
             }
             pub fn to_bytes_be(&self) -> [u8; $l*core::mem::size_of::<$t>()] {
-                const factor: usize = core::mem::size_of::<$t>();
-                let mut out = [0u8; $l*factor];
+                const FACTOR: usize = core::mem::size_of::<$t>();
+                let mut out = [0u8; $l*FACTOR];
                 for i in 0..$l {
                     let tmp = <$t>::from(self[i]).to_be_bytes();
-                    for j in 0..factor {
-                        out[i*factor+j] = tmp[j];
+                    for j in 0..FACTOR {
+                        out[i*FACTOR+j] = tmp[j];
                     }
                 }
                 out
@@ -700,3 +703,5 @@ where
 pub fn div_ceil(a: usize, b: usize) -> u64 {
     (f64::ceil((a as f64)/(b as f64))) as u64
 }
+
+bytes!(TestFooBytes, 87);
