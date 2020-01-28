@@ -5,7 +5,7 @@
 //! ```
 
 pub use crate::*;
-pub use num::{self, BigUint, Num, Zero};
+pub use num::{self, BigUint, Num, Zero, CheckedSub};
 pub use std::num::ParseIntError;
 pub use std::ops::*;
 pub use std::{cmp::min, cmp::PartialEq, fmt};
