@@ -20,37 +20,15 @@
 //! * define compiler interface
 //! * add `cargo hacspec fstar` command
 //!
-#[macro_export]
-macro_rules! hacspec_crates {
-    () => {
-        extern crate abstract_integers;
-        extern crate num;
-        extern crate rand;
-        extern crate secret_integers;
-    };
-}
 
-#[macro_export]
-macro_rules! hacspec_imports {
-    () => {
-        #[allow(unused_imports)]
-        use abstract_integers::*;
-        #[allow(unused_imports)]
-        use num::{BigUint, CheckedSub, Num, Zero};
-        #[allow(unused_imports)]
-        use secret_integers::*;
-        #[allow(unused_imports)]
-        use std::num::ParseIntError;
-        #[allow(unused_imports)]
-        use std::ops::*;
-        #[allow(unused_imports)]
-        use std::{cmp::min, cmp::PartialEq, fmt};
-    };
-}
+use rand;
+use std::convert::AsMut;
+use std::num::ParseIntError;
+use std::ops::{Index, IndexMut, Range, RangeFull};
 
-hacspec_crates!();
+pub mod prelude;
 
-hacspec_imports!();
+use crate::prelude::*;
 
 fn hex_string_to_bytes(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0);
