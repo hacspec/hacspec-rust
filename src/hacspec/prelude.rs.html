@@ -11,8 +11,6 @@
 <span id="11">11</span>
 <span id="12">12</span>
 <span id="13">13</span>
-<span id="14">14</span>
-<span id="15">15</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module conveniently exports common subroutines necessary for hacspecs</span>
 <span class="doccomment">//!</span>
@@ -21,13 +19,11 @@
 <span class="doccomment">//! ```</span>
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">num</span>::{<span class="self">self</span>, <span class="ident">BigUint</span>, <span class="ident">Num</span>, <span class="ident">Zero</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">paste</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">num</span>::{<span class="self">self</span>, <span class="ident">BigUint</span>, <span class="ident">Num</span>, <span class="ident">Zero</span>, <span class="ident">CheckedSub</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">num</span>::<span class="ident">ParseIntError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp</span>::<span class="ident">min</span>, <span class="ident">cmp</span>::<span class="ident">PartialEq</span>, <span class="ident">fmt</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">uint</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">uint</span>::{<span class="ident">natmod_p</span>::<span class="kw-2">*</span>, <span class="ident">traits</span>::<span class="kw-2">*</span>, <span class="ident">uint_n</span>::<span class="kw-2">*</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">wrapping_arithmetic</span>::{<span class="self">self</span>, <span class="ident">wrappit</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">abstract_integers</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">secret_integers</span>::<span class="kw-2">*</span>;
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "hacspec";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
