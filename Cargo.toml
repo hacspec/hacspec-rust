@@ -7,11 +7,7 @@ description = "A set of tools to write succinct crypto specs."
 license = "Apache-2.0"
 
 [dependencies]
-rand = "0.7" # ok?
-wrapping_arithmetic = "0.1"
+rand = "0.7"
 num = "0.2"
-paste = "0.1"
-uint = { git = "https://github.com/franziskuskiefer/rust-uint-n" }
-
-[dev-dependencies]
-# uint = { path = "../uint_n" }
+secret_integers = "0.1.5"
+abstract_integers = "0.1.2"
