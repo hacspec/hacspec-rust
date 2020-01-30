@@ -12,3 +12,13 @@ pub fn hex_string_to_bytes(s: &str) -> Vec<u8> {
         .collect();
     b.expect("Error parsing hex string")
 }
+
+pub fn to_array<A, T>(slice: &[T]) -> A
+where
+    A: Default + AsMut<[T]>,
+    T: Copy,
+{
+    let mut a = A::default();
+    <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
+    a
+}
