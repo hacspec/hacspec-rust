@@ -31,20 +31,17 @@ pub mod test_vectors;
 
 use crate::prelude::*;
 
-fn hex_string_to_bytes(s: &str) -> Vec<u8> {
-    assert!(s.len() % 2 == 0);
-    let b: Result<Vec<u8>, ParseIntError> = (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-        .collect();
-    b.expect("Error parsing hex string")
-}
-
 /// Common trait for all byte arrays.
 pub trait SeqTrait<T: Copy> {
     fn raw<'a>(&'a self) -> &'a [T];
     fn len(&self) -> usize;
     fn iter(&self) -> std::slice::Iter<T>;
+}
+
+#[derive(Clone, Copy)]
+pub struct SeqSlice<'a, T: Copy> {
+    p: &'a [T],
+    len: usize,
 }
 
 // ======================== Variable length arrays ========================== //
@@ -55,9 +52,16 @@ pub struct Seq<T: Copy> {
     b: Vec<T>,
 }
 
+// TODO: Why ByteSeq with secret integers?
 pub type ByteSeq = Seq<U8>;
+pub type MyByteSeq = Seq<u8>;
 
 impl<T: Copy + Default> Seq<T> {
+    pub fn new() -> Self {
+        Self {
+            b: Vec::<T>::new()
+        }
+    }
     pub fn new_len(l: usize) -> Self {
         Self {
             b: vec![T::default(); l],
@@ -73,7 +77,7 @@ impl<T: Copy + Default> Seq<T> {
         self.b.len()
     }
     pub fn update<A: SeqTrait<T>>(mut self, start: usize, v: A) -> Self {
-        assert!(self.len() >= start + v.len());
+        debug_assert!(self.len() >= start + v.len());
         for (i, b) in v.iter().enumerate() {
             self[start + i] = *b;
         }
@@ -86,8 +90,8 @@ impl<T: Copy + Default> Seq<T> {
         start_in: usize,
         len: usize,
     ) -> Self {
-        assert!(self.len() >= start_out + len);
-        assert!(v.len() >= start_in + len);
+        debug_assert!(self.len() >= start_out + len);
+        debug_assert!(v.len() >= start_in + len);
         for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
             self[start_out + i] = *b;
         }
@@ -103,6 +107,10 @@ impl<T: Copy + Default> Seq<T> {
             a[i] = *v;
         }
         a
+    }
+
+    pub fn chunks(&self, chunk_size: usize) -> std::slice::Chunks<'_, T> {
+        self.b.chunks(chunk_size)
     }
 }
 
@@ -122,6 +130,28 @@ impl Seq<U8> {
 
     pub fn to_hex(&self) -> String {
         let strs: Vec<String> = self.b.iter()
+                       .map(|b| format!("{:02x}", b))
+                       .collect();
+        strs.join("")
+    }
+
+    // pub fn chunks(&self, chunk_size: usize) -> Vec<SeqSlice<'_, U8>> { // std::slice::Chunks<'_, T> {
+    //     let chunks = self.b.chunks(chunk_size);
+    //     let mut out = Vec::<SeqSlice<'_, U8>>::new();
+    //     for chunk in chunks {
+    //         out.push(
+    //         SeqSlice<'_, U8> {
+    //             l = chunk.len();
+    //             p = chunk;
+    //         });
+    //     }
+    //     out 
+    // }
+}
+
+impl Seq<u8> {
+    pub fn to_hex(&self) -> String {
+        let strs: Vec<String> = self.iter()
                        .map(|b| format!("{:02x}", b))
                        .collect();
         strs.join("")
@@ -208,9 +238,25 @@ impl From<&str> for Seq<U8> {
         )
     }
 }
-impl From<String> for Bytes {
-    fn from(s: String) -> Bytes {
-        Bytes::from(hex_string_to_bytes(&s))
+impl From<String> for Seq<U8> {
+    fn from(s: String) -> Seq<U8> {
+        Seq::<U8>::from(
+            hex_string_to_bytes(&s)
+                .iter()
+                .map(|x| U8::classify(*x))
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+// TODO: duplicate code...
+impl From<&str> for Seq<u8> {
+    fn from(s: &str) -> Seq<u8> {
+        Seq::<u8>::from(hex_string_to_bytes(s))
+    }
+}
+impl From<String> for Seq<u8> {
+    fn from(s: String) -> Seq<u8> {
+        Seq::<u8>::from(hex_string_to_bytes(&s))
     }
 }
 
@@ -221,8 +267,66 @@ impl From<String> for Bytes {
 macro_rules! bytes {
     ($name:ident, $l:expr) => {
         array!($name, $l, U8, u8);
+
+        impl $name {
+            pub fn to_U32s_be(&self) -> [U32; $l/4] {
+                let mut out = [U32::default(); $l/4];
+                for (i, block) in self.0.chunks(4).enumerate() {
+                    out[i] = u32_from_le_bytes(block.into());
+                }
+                out
+            }
+        }
     };
 }
+
+#[macro_export]
+macro_rules! public_bytes {
+    ($name:ident, $l:expr) => {
+        public_array!($name, $l, u8);
+
+        impl $name {
+            pub fn to_u32s_be(&self) -> [u32; $l/4] {
+                let mut out = [0u32; $l/4];
+                for (i, block) in self.0.chunks(4).enumerate() {
+                    debug_assert!(block.len() == 4);
+                    out[i] = u32::from_be_bytes(to_array(block));
+                }
+                out
+            }
+            pub fn to_hex(&self) -> String {
+                let strs: Vec<String> = self.0.iter()
+                               .map(|b| format!("{:02x}", b))
+                               .collect();
+                strs.join("")
+            }
+        }
+    };
+}
+
+// impl<'b> SeqTrait<u8> for SeqSlice<'b, u8> {
+//     fn raw<'a>(&'a self) -> &'a [u8] {
+//         &self.p
+//     }
+//     fn len(&self) -> usize {
+//         self.len
+//     }
+//     fn iter(&self) -> std::slice::Iter<u8> {
+//         self.p.iter()
+//     }
+// }
+
+// impl<'b> SeqTrait<U8> for SeqSlice<'b, U8> {
+//     fn raw<'a>(&'a self) -> &'a [U8] {
+//         &self.p
+//     }
+//     fn len(&self) -> usize {
+//         self.len
+//     }
+//     fn iter(&self) -> std::slice::Iter<U8> {
+//         self.p.iter()
+//     }
+// }
 
 #[macro_export]
 macro_rules! array_base {
@@ -237,6 +341,37 @@ macro_rules! array_base {
         impl From<[$t; $l]> for $name {
             fn from(v: [$t; $l]) -> Self {
                 Self(v.clone())
+            }
+        }
+
+        // impl SeqTrait<$t> for std::slice::Chunks<'_, $t> {
+        //     fn raw<'a>(&'a self) -> &'a [$t] {
+        //         self
+        //     }
+        //     fn len(&self) -> usize {
+        //         $l
+        //     }
+        //     fn iter(&self) -> std::slice::Iter<$t> {
+        //         self.iter()
+        //     }
+        // }
+
+        impl From<&[$t]> for $name {
+            fn from(v: &[$t]) -> Self {
+                debug_assert!(v.len() <= $l);
+                let mut tmp = [<$t>::default(); $l];
+                for i in 0..v.len() {
+                    tmp[i] = v[i];
+                }
+                Self(tmp.clone())
+            }
+        }
+        
+        impl<'a> From<std::slice::Chunks<'_, $t>> for $name {
+            fn from(v: std::slice::Chunks<'_, $t>) -> Self {
+                debug_assert!($l <= v.len());
+                let tmp: Self = v.clone().into();
+                $name::from_sub_pad(tmp, 0..v.len())
             }
         }
 
@@ -257,7 +392,7 @@ macro_rules! array_base {
             }
 
             pub fn from_sub<A: SeqTrait<$t>>(input: A, r: Range<usize>) -> Self {
-                assert!(
+                debug_assert!(
                     $l == r.end - r.start,
                     "sub range is not the length of the output type "
                 );
@@ -265,7 +400,7 @@ macro_rules! array_base {
             }
 
             pub fn copy_pad<A: SeqTrait<$t>>(v: A) -> Self {
-                assert!(v.len() <= $l);
+                debug_assert!(v.len() <= $l);
                 let mut tmp = [<$t>::default(); $l];
                 for (i, x) in v.iter().enumerate() {
                     tmp[i] = *x;
@@ -273,7 +408,7 @@ macro_rules! array_base {
                 Self(tmp.clone())
             }
             pub fn copy<A: SeqTrait<$t>>(v: A) -> Self {
-                assert!(v.len() == $l);
+                debug_assert!(v.len() == $l);
                 let mut tmp = [<$t>::default(); $l];
                 for (i, x) in v.iter().enumerate() {
                     tmp[i] = *x;
@@ -281,7 +416,7 @@ macro_rules! array_base {
                 Self(tmp.clone())
             }
             pub fn update<A: SeqTrait<$t>>(mut self, start: usize, v: A) -> Self {
-                assert!(self.len() >= start + v.len());
+                debug_assert!(self.len() >= start + v.len());
                 for (i, b) in v.iter().enumerate() {
                     self[start + i] = *b;
                 }
@@ -294,8 +429,8 @@ macro_rules! array_base {
                 start_in: usize,
                 len: usize,
             ) -> Self {
-                assert!(self.len() >= start_out + len);
-                assert!(v.len() >= start_in + len);
+                debug_assert!(self.len() >= start_out + len);
+                debug_assert!(v.len() >= start_in + len);
                 for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
                     self[start_out + i] = *b;
                 }
@@ -303,6 +438,17 @@ macro_rules! array_base {
             }
             pub fn len(&self) -> usize {
                 $l
+            }
+            pub fn to_bytes_be(&self) -> [u8; $l*core::mem::size_of::<$t>()] {
+                const FACTOR: usize = core::mem::size_of::<$t>();
+                let mut out = [0u8; $l*FACTOR];
+                for i in 0..$l {
+                    let tmp = <$t>::from(self[i]).to_be_bytes();
+                    for j in 0..FACTOR {
+                        out[i*FACTOR+j] = tmp[j];
+                    }
+                }
+                out
             }
         }
 
@@ -381,7 +527,7 @@ macro_rules! array_base {
         }
         impl From<Vec<$t>> for $name {
             fn from(x: Vec<$t>) -> $name {
-                assert!(x.len() <= $l);
+                debug_assert!(x.len() <= $l);
                 let mut tmp = [<$t>::default(); $l];
                 for (i, e) in x.iter().enumerate() {
                     tmp[i] = *e;
@@ -403,11 +549,23 @@ macro_rules! array_base {
             fn from(s: &str) -> $name {
                 let v = $name::hex_string_to_vec(s);
                 let mut o = $name::new();
-                assert!(v.len() == $l);
+                debug_assert!(v.len() == $l);
                 for i in 0..$l {
                     o[i] = v[i]
                 }
                 o
+            }
+        }
+
+        /// Element wise xor of two arrays
+        impl std::ops::BitXor for $name {
+            type Output = Self;
+            fn bitxor(self, rhs: Self) -> Self::Output {
+                let mut out = Self::new();
+                for (a, (b, c)) in out.0.iter_mut().zip(self.0.iter().zip(rhs.0.iter())) {
+                    *a = *b ^ *c;
+                }
+                out
             }
         }
     };
@@ -420,7 +578,7 @@ macro_rules! array {
 
         impl $name {
             fn hex_string_to_vec(s: &str) -> Vec<$t> {
-                assert!(s.len() % std::mem::size_of::<$t>() == 0);
+                debug_assert!(s.len() % std::mem::size_of::<$t>() == 0);
                 let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
                     .step_by(2)
                     .map(|i| <$tbase>::from_str_radix(&s[i..i + 2], 16).map(<$t>::classify))
@@ -465,7 +623,7 @@ macro_rules! public_array {
         array_base!($name, $l, $t, $t);
         impl $name {
             fn hex_string_to_vec(s: &str) -> Vec<$t> {
-                assert!(s.len() % std::mem::size_of::<$t>() == 0);
+                debug_assert!(s.len() % std::mem::size_of::<$t>() == 0);
                 let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
                     .step_by(2)
                     .map(|i| <$t>::from_str_radix(&s[i..i + 2], 16))
@@ -496,6 +654,10 @@ bytes!(U128Word, 16);
 bytes!(U64Word, 8);
 public_array!(Counter, 2, usize);
 
+public_array!(u32Word, 4, u8);
+public_array!(u64Word, 8, u8);
+public_array!(u128Word, 16, u8);
+
 pub fn u32_to_le_bytes(x: U32) -> U32Word {
     U32Word([
         U8::from((x & U32::classify(0xFF000000u32)) >> 24),
@@ -507,6 +669,10 @@ pub fn u32_to_le_bytes(x: U32) -> U32Word {
 
 pub fn u32_from_le_bytes(s: U32Word) -> U32 {
     U32::from_bytes_le(&s.0)[0]
+}
+
+pub fn u32_from_le_bytes_u32(s: u32Word) -> u32 {
+    u32::from_le_bytes(s.0)
 }
 
 pub fn u32_to_be_bytes(x: U32) -> U32Word {
@@ -523,6 +689,10 @@ pub fn u128_from_be_bytes(s: U128Word) -> U128 {
 
 pub fn u128_to_be_bytes(x: U128) -> U128Word {
     U128Word::from(U128::to_bytes_be(&[x]))
+}
+
+pub fn u64_to_be_bytes_u64(x: u64) -> u64Word {
+    u64Word::from(u64::to_be_bytes(x))
 }
 
 pub fn u64_to_be_bytes(x: U64) -> U64Word {
@@ -619,4 +789,14 @@ macro_rules! field_integer {
             }
         }
     };
+}
+
+pub fn to_array<A, T>(slice: &[T]) -> A
+where
+    A: Default + AsMut<[T]>,
+    T: Copy,
+{
+    let mut a = A::default();
+    <A as AsMut<[T]>>::as_mut(&mut a).copy_from_slice(slice);
+    a
 }
