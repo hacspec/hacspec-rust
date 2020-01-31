@@ -13,9 +13,15 @@ macro_rules! bytes {
             pub fn to_U32s_be(&self) -> [U32; $l/4] {
                 let mut out = [U32::default(); $l/4];
                 for (i, block) in self.0.chunks(4).enumerate() {
-                    out[i] = u32_from_le_bytes(block.into());
+                    out[i] = u32_from_be_bytes(block.into());
                 }
                 out
+            }
+            pub fn to_hex(&self) -> String {
+                let strs: Vec<String> = self.0.iter()
+                               .map(|b| format!("{:02x}", b))
+                               .collect();
+                strs.join("")
             }
         }
     };
@@ -324,6 +330,13 @@ macro_rules! array {
 
         impl From<&[$tbase]> for $name {
             fn from(v: &[$tbase]) -> $name {
+                debug_assert!(v.len() <= $l);
+                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+            }
+        }
+
+        impl From<[$tbase; $l]> for $name {
+            fn from(v: [$tbase; $l]) -> $name {
                 debug_assert!(v.len() == $l);
                 Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
             }

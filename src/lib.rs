@@ -59,6 +59,10 @@ pub fn u32_to_le_bytes(x: U32) -> U32Word {
     ])
 }
 
+pub fn u32_from_be_bytes(s: U32Word) -> U32 {
+    U32::from_bytes_be(&s.0)[0]
+}
+
 pub fn u32_from_le_bytes(s: U32Word) -> U32 {
     U32::from_bytes_le(&s.0)[0]
 }
