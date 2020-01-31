@@ -24,6 +24,7 @@
 use rand;
 use std::convert::AsMut;
 use std::ops::{Index, IndexMut, Range, RangeFull};
+use std::any::TypeId;
 
 pub mod util;
 pub mod prelude;

@@ -47,6 +47,7 @@ macro_rules! public_bytes {
 
 #[macro_export]
 macro_rules! array_base {
+    // TODO: do we really need to pass in tbase? Should be always the same. Maybe make map from t to tbase?
     ($name:ident,$l:expr,$t:ty, $tbase:ty) => {
         /// Fixed length byte array.
         /// Because Rust requires fixed length arrays to have a known size at
@@ -251,6 +252,7 @@ macro_rules! array_base {
 
         /// Read hex string to Bytes.
         impl From<&str> for $name {
+            // TODO: this only works for bytes
             fn from(s: &str) -> $name {
                 let v = $name::hex_string_to_vec(s);
                 let mut o = $name::new();
@@ -319,6 +321,13 @@ macro_rules! array {
                         .collect::<Vec<_>>()
             }
         }
+
+        impl From<&[$tbase]> for $name {
+            fn from(v: &[$tbase]) -> $name {
+                debug_assert!(v.len() == $l);
+                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+            }
+        }
     };
 }
 
@@ -349,6 +358,26 @@ macro_rules! public_array {
         impl PartialEq for $name {
             fn eq(&self, other: &Self) -> bool {
                 self.0[..] == other.0[..]
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! both_arrays {
+    ($public_name:ident, $name:ident, $l:expr, $t:ty, $tbase:ty) => {
+        array!($name, $l, $t, $tbase);
+        public_array!($public_name, $l, $tbase);
+
+        // Conversion function between public and secret array versions.
+        impl From<$public_name> for $name {
+            fn from(v: $public_name) -> $name {
+                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+            }
+        }
+        impl From<$name> for $public_name {
+            fn from(v: $name) -> $public_name {
+                Self::from(v[..].iter().map(|x| <$t>::declassify(*x)).collect::<Vec<$tbase>>())
             }
         }
     };
