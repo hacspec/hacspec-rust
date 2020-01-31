@@ -382,3 +382,10 @@ macro_rules! both_arrays {
         }
     };
 }
+
+#[macro_export]
+macro_rules! both_bytes {
+    ($public_name:ident, $name:ident, $l:expr) => {
+        both_arrays!($public_name, $name, $l, U8, u8);
+    };
+}
