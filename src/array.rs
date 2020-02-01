@@ -91,6 +91,9 @@ macro_rules! array_base {
             pub fn new() -> Self {
                 Self([<$t>::default(); $l])
             }
+            pub fn capacity() -> usize {
+                $l
+            }
 
             pub fn from_sub_pad<A: SeqTrait<$t>>(input: A, r: Range<usize>) -> Self {
                 let mut a = Self::default();

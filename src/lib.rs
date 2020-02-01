@@ -171,3 +171,9 @@ macro_rules! field_integer {
         }
     };
 }
+
+/// Compute ceil(a/b), returning a u64.
+/// Note that float-uint conversion might be lossy.
+pub fn div_ceil(a: usize, b: usize) -> u64 {
+    (f64::ceil((a as f64)/(b as f64))) as u64
+}

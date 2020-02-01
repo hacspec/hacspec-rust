@@ -57,6 +57,18 @@ impl<T: Copy + Default> Seq<T> {
         }
         self
     }
+    pub fn update_element(
+        mut self,
+        start_out: usize,
+        v: T,
+    ) -> Self {
+        debug_assert!(self.len() >= start_out + 1);
+        self[start_out] = v;
+        self
+    }
+    pub fn sub(self, start_out: usize, len: usize) -> Self {
+        Self::from(self.b.iter().skip(start_out).map(|x| *x).take(len).collect::<Vec<T>>())
+    }
 
     pub fn from_sub<A: SeqTrait<T>>(input: A, r: Range<usize>) -> Self {
         let mut a = Self::default();
@@ -174,6 +186,13 @@ impl<T: Copy> From<Vec<T>> for Seq<T> {
         Self { b: x.clone() }
     }
 }
+
+impl<T: Copy> From<&[T]> for Seq<T> {
+    fn from(x: &[T]) -> Seq<T> {
+        Self { b: x.to_vec() }
+    }
+}
+
 /// Read hex string to Bytes.
 impl From<&str> for Seq<U8> {
     fn from(s: &str) -> Seq<U8> {
