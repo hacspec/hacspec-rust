@@ -165,6 +165,10 @@ macro_rules! array_base {
                 }
                 out
             }
+
+            pub fn chunks(&self, chunk_size: usize) -> std::slice::Chunks<'_, $t> {
+                self.0.chunks(chunk_size)
+            }
         }
 
         impl Default for $name {

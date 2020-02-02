@@ -36,15 +36,17 @@ impl<T: Copy + Default> Seq<T> {
     pub fn len(&self) -> usize {
         self.b.len()
     }
-    pub fn update<A: SeqTrait<T>>(mut self, start: usize, v: A) -> Self {
+    pub fn update<A: SeqTrait<T>>(self, start: usize, v: A) -> Self {
+        println!("{:?} >= {:?} + {:?}", self.len(), start, v.len());
         debug_assert!(self.len() >= start + v.len());
+        let mut self_copy = self;
         for (i, b) in v.iter().enumerate() {
-            self[start + i] = *b;
+            self_copy[start + i] = *b;
         }
-        self
+        self_copy
     }
     pub fn update_sub<A: SeqTrait<T>>(
-        mut self,
+        self,
         start_out: usize,
         v: A,
         start_in: usize,
@@ -52,10 +54,11 @@ impl<T: Copy + Default> Seq<T> {
     ) -> Self {
         debug_assert!(self.len() >= start_out + len);
         debug_assert!(v.len() >= start_in + len);
+        let mut self_copy = self;
         for (i, b) in v.iter().skip(start_in).take(len).enumerate() {
-            self[start_out + i] = *b;
+            self_copy[start_out + i] = *b;
         }
-        self
+        self_copy
     }
     pub fn update_element(
         mut self,
@@ -65,6 +68,17 @@ impl<T: Copy + Default> Seq<T> {
         debug_assert!(self.len() >= start_out + 1);
         self[start_out] = v;
         self
+    }
+    pub fn push<A: SeqTrait<T>>(self, v: A) -> Self {
+        let mut self_copy = self.b;
+        self_copy.extend(v.raw());
+        Self::from(self_copy)
+    }
+    pub fn push_sub<A: SeqTrait<T>>(self, v: A, start: usize, l: usize) -> Self {
+        debug_assert!(l < v.len());
+        let mut self_copy = self.b;
+        self_copy.extend(v.raw()[start..l].iter());
+        Self::from(self_copy)
     }
     pub fn sub(self, start_out: usize, len: usize) -> Self {
         Self::from(self.b.iter().skip(start_out).map(|x| *x).take(len).collect::<Vec<T>>())
@@ -83,6 +97,10 @@ impl<T: Copy + Default> Seq<T> {
 
     pub fn chunks(&self, chunk_size: usize) -> std::slice::Chunks<'_, T> {
         self.b.chunks(chunk_size)
+    }
+
+    pub fn chunks_exact(&self, chunk_size: usize) -> std::slice::ChunksExact<'_, T> {
+        self.b.chunks_exact(chunk_size)
     }
 }
 
