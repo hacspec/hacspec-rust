@@ -31,6 +31,7 @@ pub mod prelude;
 pub mod test_vectors;
 pub mod seq;
 pub mod array;
+pub mod poly;
 
 use crate::prelude::*;
 
