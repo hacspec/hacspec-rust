@@ -1,15 +1,17 @@
 //!
 //! # Sequences
-//! 
+//!
 //! This module implements variable-length sequences and utility functions for it.
-//! 
+//!
 
 use crate::prelude::*;
 
 /// Variable length byte arrays.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Seq<T: Copy> {
     b: Vec<T>,
+    // Running index used when data is pushed into a Seq.
+    idx: usize,
 }
 
 // TODO: Why ByteSeq with secret integers? Naming is odd
@@ -17,25 +19,36 @@ pub type ByteSeq = Seq<U8>;
 pub type MyByteSeq = Seq<u8>;
 
 impl<T: Copy + Default> Seq<T> {
-    pub fn new() -> Self {
-        Self {
-            b: Vec::<T>::new()
-        }
-    }
-    pub fn new_len(l: usize) -> Self {
+    /// Get a new sequence of capacity `l`.
+    pub fn new(l: usize) -> Self {
         Self {
             b: vec![T::default(); l],
+            idx: 0,
         }
     }
-    pub fn is_empty(&self) -> bool {
-        self.b.is_empty()
-    }
+    /// Get a new sequence from array `v`.
     pub fn from_array(v: &[T]) -> Self {
-        Self { b: v.to_vec() }
+        Self {
+            b: v.to_vec(),
+            idx: 0,
+        }
     }
+    /// Get the size of this sequence.
     pub fn len(&self) -> usize {
         self.b.len()
     }
+    /// Update this sequence with `v` starting at `start`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hacspec::prelude::*;
+    ///
+    /// let mut s = Seq::<u8>::new(5);
+    /// let tmp = Seq::<u8>::from_array(&[2, 3]);
+    /// s = s.update(2, tmp);
+    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 2, 3, 0]));
+    /// ```
     pub fn update<A: SeqTrait<T>>(self, start: usize, v: A) -> Self {
         println!("{:?} >= {:?} + {:?}", self.len(), start, v.len());
         debug_assert!(self.len() >= start + v.len());
@@ -45,6 +58,19 @@ impl<T: Copy + Default> Seq<T> {
         }
         self_copy
     }
+    /// Update this sequence with `l` elements of `v`, starting at `start_in`,
+    /// at `start_out`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hacspec::prelude::*;
+    ///
+    /// let mut s = Seq::<u8>::new(5);
+    /// let tmp = Seq::<u8>::from_array(&[2, 3]);
+    /// s = s.update_sub(2, tmp, 1, 1);
+    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 3, 0, 0]));
+    /// ```
     pub fn update_sub<A: SeqTrait<T>>(
         self,
         start_out: usize,
@@ -60,28 +86,95 @@ impl<T: Copy + Default> Seq<T> {
         }
         self_copy
     }
-    pub fn update_element(
-        mut self,
-        start_out: usize,
-        v: T,
-    ) -> Self {
+    /// Update this sequence with `v` at position `start_out`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hacspec::prelude::*;
+    ///
+    /// let mut s = Seq::<u8>::new(5);
+    /// s = s.update_element(4, 7);
+    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 0, 0, 7]));
+    /// ```
+    pub fn update_element(mut self, start_out: usize, v: T) -> Self {
         debug_assert!(self.len() >= start_out + 1);
         self[start_out] = v;
         self
     }
-    pub fn push<A: SeqTrait<T>>(self, v: A) -> Self {
-        let mut self_copy = self.b;
-        self_copy.extend(v.raw());
-        Self::from(self_copy)
+    /// Reset the sequence index.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hacspec::prelude::*;
+    ///
+    /// let mut s = Seq::<u8>::new(5);
+    /// s = s.set_index(3);
+    /// s = s.push(Seq::<u8>::from_array(&[4, 5]));
+    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 0, 4, 5]));
+    /// ```
+    pub fn set_index(self, i: usize) -> Self {
+        Self {
+            b: self.b.clone(),
+            idx: i,
+        }
     }
+    /// Push `v` to this sequence and move `idx` according to `v.len()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hacspec::prelude::*;
+    ///
+    /// let mut s = Seq::<u8>::new(5);
+    /// s = s.set_index(3);
+    /// s = s.push(Seq::<u8>::from_array(&[4, 5]));
+    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 0, 4, 5]));
+    /// ```
+    pub fn push<A: SeqTrait<T>>(self, v: A) -> Self {
+        println!("{:?} >= {:?} + {:?}", self.len(), self.idx, v.len());
+        debug_assert!(self.len() >= self.idx + v.len());
+        let idx = self.idx;
+        let mut self_copy = self;
+        for (i, b) in v.iter().enumerate() {
+            self_copy[idx + i] = *b;
+        }
+        self_copy.idx += v.len();
+        self_copy
+    }
+    /// Push `l` elements from `v` to this sequence and move `idx` according to `l`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hacspec::prelude::*;
+    ///
+    /// let mut s = Seq::<u8>::new(5);
+    /// s = s.set_index(3);
+    /// s = s.push_sub(Seq::<u8>::from_array(&[4, 5]), 1, 1);
+    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 0, 5, 0]));
+    /// ```
     pub fn push_sub<A: SeqTrait<T>>(self, v: A, start: usize, l: usize) -> Self {
-        debug_assert!(l < v.len());
-        let mut self_copy = self.b;
-        self_copy.extend(v.raw()[start..l].iter());
-        Self::from(self_copy)
+        debug_assert!(self.len() >= self.idx + l);
+        debug_assert!(v.len() >= start + l);
+        let idx = self.idx;
+        let mut self_copy = self;
+        for (i, b) in v.iter().skip(start).take(l).enumerate() {
+            self_copy[idx + i] = *b;
+        }
+        self_copy.idx += l;
+        self_copy
     }
     pub fn sub(self, start_out: usize, len: usize) -> Self {
-        Self::from(self.b.iter().skip(start_out).map(|x| *x).take(len).collect::<Vec<T>>())
+        Self::from(
+            self.b
+                .iter()
+                .skip(start_out)
+                .map(|x| *x)
+                .take(len)
+                .collect::<Vec<T>>(),
+        )
     }
 
     pub fn from_sub<A: SeqTrait<T>>(input: A, r: Range<usize>) -> Self {
@@ -115,22 +208,19 @@ impl Seq<U8> {
     pub fn random(l: usize) -> Self {
         Self {
             b: Seq::get_random_vec(l),
+            idx: 0,
         }
     }
 
     pub fn to_hex(&self) -> String {
-        let strs: Vec<String> = self.b.iter()
-                       .map(|b| format!("{:02x}", b))
-                       .collect();
+        let strs: Vec<String> = self.b.iter().map(|b| format!("{:02x}", b)).collect();
         strs.join("")
     }
 }
 
 impl Seq<u8> {
     pub fn to_hex(&self) -> String {
-        let strs: Vec<String> = self.iter()
-                       .map(|b| format!("{:02x}", b))
-                       .collect();
+        let strs: Vec<String> = self.iter().map(|b| format!("{:02x}", b)).collect();
         strs.join("")
     }
 }
@@ -201,13 +291,19 @@ impl<T: Copy> IndexMut<usize> for Seq<T> {
 
 impl<T: Copy> From<Vec<T>> for Seq<T> {
     fn from(x: Vec<T>) -> Seq<T> {
-        Self { b: x.clone() }
+        Self {
+            b: x.clone(),
+            idx: 0,
+        }
     }
 }
 
 impl<T: Copy> From<&[T]> for Seq<T> {
     fn from(x: &[T]) -> Seq<T> {
-        Self { b: x.to_vec() }
+        Self {
+            b: x.to_vec(),
+            idx: 0,
+        }
     }
 }
 
@@ -241,5 +337,13 @@ impl From<&str> for Seq<u8> {
 impl From<String> for Seq<u8> {
     fn from(s: String) -> Seq<u8> {
         Seq::<u8>::from(hex_string_to_bytes(&s))
+    }
+}
+
+/// Two sequences are equal if the underlying vector is equal.
+/// The idx field is ignored.
+impl<T: Copy + PartialEq> std::cmp::PartialEq<Seq<T>> for Seq<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.b == other.b
     }
 }
