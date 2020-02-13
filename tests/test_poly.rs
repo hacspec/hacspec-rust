@@ -1,76 +1,102 @@
 use hacspec::prelude::*;
 
 unsigned_integer!(Coefficient, 256);
-field_integer!(
-    Q,
-    Coefficient,
-    Coefficient::from_hex("03")
-);
+field_integer!(Q, Coefficient, Coefficient::from_hex("03"));
+
+macro_rules! poly {
+    ($t:ty,$i:expr,$v1:expr,$v2:expr,$e:expr) => {{
+        (
+            Poly::<$t>::from((&$i[..], &$v1[..])),
+            Poly::<$t>::from((&$i[..], &$v2[..])),
+            Poly::<$t>::from((&$i[..], &$e[..])),
+        )
+    }};
+}
 
 #[test]
 fn test_poly_add() {
-    let irr = [2, 2, 0, 1];
-    let a = Poly::<u128>::new(&irr, &[0, 1, 1]);
-    let b = Poly::<u128>::new(&irr, &[1, 0, 2]);
-    let c = a.clone() + b.clone();
-    println!("{:x?} + {:x?} = {:x?}", a, b, c);
-    assert_eq!(c, Poly::<u128>::new(&irr, &[1, 1, 3]));
+    fn test_add<T: TRestrictions<T>>(x: Poly<T>, y: Poly<T>, expected: Poly<T>) {
+        let c = x.clone() + y.clone();
+        println!("{:x?} + {:x?} = {:x?}", x, y, c);
+        assert_eq!(c, expected);
+    }
 
-    let irr = [2, 2, 0, 1];
-    let a = Poly::<Q>::new(&irr, &[0, 1, 1]);
-    let b = Poly::<Q>::new(&irr, &[1, 0, 2]);
-    let c = a.clone() + b.clone();
-    println!("{:x?} + {:x?} = {:x?}", a, b, c);
-    assert_eq!(c, Poly::<Q>::new(&irr, &[1, 1, 0]));
+    let (a, b, e) = poly!(i128, [0], [0, 1, 1], [1, 0, 2], [1, 1, 3]);
+    test_add(a, b, e);
+    let (a, b, e) = poly!(i128, [0], [-1, 1, 0], [1, 0, -5], [0, 1, -5]);
+    test_add(a, b, e);
+    let (a, b, e) = poly!(u128, [0], [0, 1, 1], [1, 0, 2], [1, 1, 3]);
+    test_add(a, b, e);
+    let (a, b, e) = poly!(Q, [0], [0, 1, 1], [1, 0, 2], [1, 1, 0]);
+    test_add(a, b, e);
+    let (a, b, e) = poly!(Q, [0], [2, 2, 2], [2, 2, 2], [1, 1, 1]);
+    test_add(a, b, e);
 }
 
 #[test]
 fn test_poly_sub() {
-    let irr = [2, 2, 0, 1];
-    let a = Poly::<i128>::new_signed(&irr, &[0, 1, 1]);
-    let b = Poly::<i128>::new_signed(&irr, &[1, 0, 2]);
-    let c = a.clone() - b.clone();
-    println!("{:x?} + {:x?} = {:x?}", a, b, c);
-    assert_eq!(c, Poly::<i128>::new_signed(&irr, &[-1, 1, -1]));
+    fn test_sub<T: TRestrictions<T>>(x: Poly<T>, y: Poly<T>, expected: Poly<T>) {
+        let c = x.clone() - y.clone();
+        println!("{:x?} - {:x?} = {:x?}", x, y, c);
+        assert_eq!(c, expected);
+    }
 
-    let irr = [2, 2, 0, 1];
-    let a = Poly::<Q>::new(&irr, &[0, 1, 1]);
-    let b = Poly::<Q>::new(&irr, &[1, 0, 2]);
-    let c = a.clone() - b.clone();
-    println!("{:x?} + {:x?} = {:x?}", a, b, c);
-    assert_eq!(c, Poly::<Q>::new(&irr, &[2, 1, 2]));
+    let (a, b, e) = poly!(i128, [10], [0, 1, 1], [1, 0, 2], [-1, 1, -1]);
+    test_sub(a, b, e);
+    let (a, b, e) = poly!(i128, [10], [-1, 1, 0], [1, 0, -5], [-2, 1, 5]);
+    test_sub(a, b, e);
+    let (a, b, e) = poly!(u128, [10], [1, 1, 5], [1, 0, 2], [0, 1, 3]);
+    test_sub(a, b, e);
+    let (a, b, e) = poly!(Q, [10], [0, 1, 1], [1, 0, 2], [2, 1, 2]);
+    test_sub(a, b, e);
+    let (a, b, e) = poly!(Q, [10], [0, 0, 0], [2, 2, 2], [1, 1, 1]);
+    test_sub(a, b, e);
 }
 
 #[test]
 fn test_poly_euclid_div() {
-    let irr = [2, 2, 0, 1];
-    let a = Poly::<Q>::new(&irr, &[0, 1, 1]);
-    let b = Poly::<Q>::new(&irr, &[1, 0, 2]);
-    let (c, r) = b.euclid_div(&a);
-    println!("{:x?} / {:x?} = {:x?} + r", a, b, c);
-    assert_eq!(c.truncate(), Poly::<Q>::new(&irr, &[2]));
-    assert_eq!(r.truncate(), Poly::<Q>::new(&irr, &[1, 1]));
+    fn test_div<T: TRestrictions<T>>(
+        x: Poly<T>,
+        y: Poly<T>,
+        expected_c: Poly<T>,
+        expected_r: Poly<T>,
+    ) {
+        let (c, r) = x.euclid_div(&y);
+        println!("{:x?} / {:x?} = {:x?}, {:x?}", x, y, c, r);
+        assert_eq!(c.truncate(), expected_c);
+        assert_eq!(r.truncate(), expected_r);
+    }
+
+    let (a, b, e) = poly!(Q, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [2]);
+    test_div(b, a, e, Poly::<Q>::new(&[2, 2, 0, 1], &[1, 1]));
+
+    // FIXME: implement inv so this works as well
+    // let (a, b, e) = poly!(u128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [2]);
+    // test_div(b, a, e, Poly::<u128>::new(&[2, 2, 0, 1], &[1, 1]));
 }
 
 #[test]
 fn test_poly_mul() {
-    let irr = [2, 2, 0, 1];
-    let a = Poly::<Q>::new(&irr, &[0, 1, 1]);
-    let b = Poly::<Q>::new(&irr, &[1, 0, 2]);
+    fn test_mul<T: TRestrictions<T>>(x: Poly<T>, y: Poly<T>, expected: Poly<T>) {
+        let c = x.clone() * y.clone();
+        println!("{:x?} * {:x?} = {:x?}", x, y, c);
+        assert_eq!(c, expected);
+    }
 
-    let c = a.clone() * b.clone();
-    println!("{:x?} * {:x?} = {:x?}", a, b, c);
-    // 2*x^4 + 2*x^3 + x^2 + x  = [1, 0, 1, 2, 2]
-    // 2*x + 2                  = [2, 2, 0]
-    assert_eq!(c, Poly::<Q>::new(&irr, &[2, 2]));
+    let (a, b, e) = poly!(Q, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [2, 2]);
+    test_mul(a, b, e);
+    let (a, b, e) = poly!(Q, [2, 2, 0, 1], [2, 2, 0], [1, 2, 2], [0, 1, 2]);
+    test_mul(a, b, e);
 
-    let a = Poly::new(&irr, &[2, 2, 0]);
-    let b = Poly::new(&irr, &[1, 2, 2]);
-    let c = a.clone() * b.clone();
-    println!("{:x?} * {:x?} = {:x?}", a, b, c);
-    // x^3 + 2*x^2 + 2          = [2, 0, 2, 1]
-    // 2*x^2 + x                = [0, 1, 2]
-    assert_eq!(c, Poly::<Q>::new(&irr, &[0, 1, 2]));
+    // let irr = random_poly::<u128>(2048, 0, 4);
+    // let a = Poly::<u128>::random(&irr, 0..3, 3);
+    // let b = Poly::<u128>::random(&irr, 0..3, 3);
+    // let r = a.clone() * b.clone();
+    // println!("{:x?} * {:x?} = {:x?}", a, b, r);
+
+    // FIXME: implement inv so this works as well
+    // let (a, b, e) = poly!(u128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [2, 2]);
+    // test_mul(a, b, e);
 }
 
 #[test]
@@ -85,7 +111,7 @@ fn test_poly_inversion() {
         println!(" > p_inv: {:x?}", p_inv.clone());
         let test = p * p_inv;
         println!(" > (p_inv * p) % irr: {:x?}", test);
-        assert_eq!(test.poly, [Q::from_literal(1)]);
+        assert_eq!(test, Poly::<Q>::new(&irr, &[1]));
     }
 
     test_poly_inversion(a, &irr);

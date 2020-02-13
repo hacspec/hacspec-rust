@@ -11,9 +11,9 @@ rand = "0.7"
 num = "0.2"
 serde_json = "1.0"
 serde = {version = "1.0", features = ["derive"]}
-secret_integers = { git = "https://github.com/hacspec/rust-secret-integers" }
-abstract_integers = { git = "https://github.com/hacspec/rust-abstract-integers" }
+# secret_integers = { git = "https://github.com/hacspec/rust-secret-integers" }
+# abstract_integers = { git = "https://github.com/hacspec/rust-abstract-integers" }
 
 # Local dependencies for development
-# secret_integers = { path = "../rust-secret-integers" }
-# abstract_integers = { path = "../rust-abstract-integers" }
+secret_integers = { path = "../rust-secret-integers" }
+abstract_integers = { path = "../rust-abstract-integers" }
