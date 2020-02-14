@@ -166,8 +166,33 @@ macro_rules! array_base {
                 out
             }
 
-            pub fn chunks(&self, chunk_size: usize) -> std::slice::Chunks<'_, $t> {
-                self.0.chunks(chunk_size)
+            /// Get an iterator over this array with chunks of size `chunk_size`.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use hacspec::prelude::*;
+            ///
+            /// public_bytes!(Block, 5);
+            /// let a = Block::from([0, 1, 2, 3, 4]);
+            /// let mut a_chunks = a.chunks(2);
+            /// let a_chunk = a_chunks.next().unwrap();
+            /// assert_eq!(a_chunk.0, 2);
+            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[0, 1]));
+            /// let a_chunk = a_chunks.next().unwrap();
+            /// assert_eq!(a_chunk.0, 2);
+            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[2, 3]));
+            /// let a_chunk = a_chunks.next().unwrap();
+            /// assert_eq!(a_chunk.0, 1);
+            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[4]));
+            ///
+            /// let a = Block::from([0, 1, 2, 3, 4]);
+            /// for (l, chunk) in a.chunks(2) {
+            ///     println!("{:x?}", chunk); // prints [0, 1], [2, 3], [4]
+            /// }
+            /// ```
+            pub fn chunks<'a>(&'a self, chunk_size: usize) -> impl Iterator<Item = (usize, Seq<$t>)> + 'a {
+                self.0.chunks(chunk_size).map(|c| (c.len(), Seq::<$t>::from(c)))
             }
         }
 
