@@ -254,6 +254,16 @@ macro_rules! array_base {
                 $name(tmp.clone())
             }
         }
+        impl From<Seq<$t>> for $name {
+            fn from(x: Seq<$t>) -> $name {
+                debug_assert!(x.len() <= $l);
+                let mut tmp = [<$t>::default(); $l];
+                for (i, e) in x.iter().enumerate() {
+                    tmp[i] = *e;
+                }
+                $name(tmp.clone())
+            }
+        }
 
         impl $name {
             pub fn random() -> $name {
