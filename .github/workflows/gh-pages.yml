@@ -23,7 +23,6 @@ jobs:
           EOF
       - name: Deploy to Github Pages
         uses: peaceiris/actions-gh-pages@v3
-        env:
-          ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: target/doc
+        with:
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          publish_dir: target/doc
