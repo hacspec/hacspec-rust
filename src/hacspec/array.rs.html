@@ -419,12 +419,58 @@
 <span id="419">419</span>
 <span id="420">420</span>
 <span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Arrays</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! This module implements fixed-length arrays and utility functions for it.</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">bytes</span> {
@@ -432,17 +478,15 @@
         <span class="macro">array</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>, <span class="ident">U8</span>, <span class="ident">u8</span>);
 
         <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
-            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_U32s_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">U32</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span><span class="op">/</span><span class="number">4</span>] {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> [<span class="ident">U32</span>::<span class="ident">default</span>(); <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span><span class="op">/</span><span class="number">4</span>];
+            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_U32s_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">U32</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span> <span class="op">/</span> <span class="number">4</span>] {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> [<span class="ident">U32</span>::<span class="ident">default</span>(); <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span> <span class="op">/</span> <span class="number">4</span>];
                 <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">block</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">chunks</span>(<span class="number">4</span>).<span class="ident">enumerate</span>() {
                     <span class="ident">out</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">u32_from_be_bytes</span>(<span class="ident">block</span>.<span class="ident">into</span>());
                 }
                 <span class="ident">out</span>
             }
             <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_hex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
-                <span class="kw">let</span> <span class="ident">strs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>()
-                               .<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{:02x}&quot;</span>, <span class="ident">b</span>))
-                               .<span class="ident">collect</span>();
+                <span class="kw">let</span> <span class="ident">strs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{:02x}&quot;</span>, <span class="ident">b</span>)).<span class="ident">collect</span>();
                 <span class="ident">strs</span>.<span class="ident">join</span>(<span class="string">&quot;&quot;</span>)
             }
         }
@@ -455,8 +499,8 @@
         <span class="macro">public_array</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>, <span class="ident">u8</span>);
 
         <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
-            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_u32s_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u32</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span><span class="op">/</span><span class="number">4</span>] {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> [<span class="number">0u32</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span><span class="op">/</span><span class="number">4</span>];
+            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_u32s_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u32</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span> <span class="op">/</span> <span class="number">4</span>] {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> [<span class="number">0u32</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span> <span class="op">/</span> <span class="number">4</span>];
                 <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">block</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">chunks</span>(<span class="number">4</span>).<span class="ident">enumerate</span>() {
                     <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">4</span>);
                     <span class="ident">out</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">u32</span>::<span class="ident">from_be_bytes</span>(<span class="ident">to_array</span>(<span class="ident">block</span>));
@@ -464,9 +508,7 @@
                 <span class="ident">out</span>
             }
             <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_hex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
-                <span class="kw">let</span> <span class="ident">strs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>()
-                               .<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{:02x}&quot;</span>, <span class="ident">b</span>))
-                               .<span class="ident">collect</span>();
+                <span class="kw">let</span> <span class="ident">strs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{:02x}&quot;</span>, <span class="ident">b</span>)).<span class="ident">collect</span>();
                 <span class="ident">strs</span>.<span class="ident">join</span>(<span class="string">&quot;&quot;</span>)
             }
         }
@@ -500,7 +542,7 @@
                 <span class="self">Self</span>(<span class="ident">tmp</span>.<span class="ident">clone</span>())
             }
         }
-        
+
         <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">std</span>::<span class="ident">slice</span>::<span class="ident">Chunks</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
             <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">v</span>: <span class="ident">std</span>::<span class="ident">slice</span>::<span class="ident">Chunks</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
                 <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">v</span>.<span class="ident">len</span>());
@@ -576,20 +618,50 @@
             <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>
             }
-            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span><span class="kw-2">*</span><span class="ident">core</span>::<span class="ident">mem</span>::<span class="ident">size_of</span>::<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>()] {
+            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span> <span class="op">*</span> <span class="ident">core</span>::<span class="ident">mem</span>::<span class="ident">size_of</span>::<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>()] {
                 <span class="kw">const</span> <span class="ident">FACTOR</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">core</span>::<span class="ident">mem</span>::<span class="ident">size_of</span>::<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>();
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span><span class="kw-2">*</span><span class="ident">FACTOR</span>];
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span> <span class="op">*</span> <span class="ident">FACTOR</span>];
                 <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span> {
                     <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">from</span>(<span class="self">self</span>[<span class="ident">i</span>]).<span class="ident">to_be_bytes</span>();
                     <span class="kw">for</span> <span class="ident">j</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">FACTOR</span> {
-                        <span class="ident">out</span>[<span class="ident">i</span><span class="kw-2">*</span><span class="ident">FACTOR</span><span class="op">+</span><span class="ident">j</span>] <span class="op">=</span> <span class="ident">tmp</span>[<span class="ident">j</span>];
+                        <span class="ident">out</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">FACTOR</span> <span class="op">+</span> <span class="ident">j</span>] <span class="op">=</span> <span class="ident">tmp</span>[<span class="ident">j</span>];
                     }
                 }
                 <span class="ident">out</span>
             }
 
-            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chunks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">chunk_size</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">slice</span>::<span class="ident">Chunks</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span> {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>)
+            <span class="doccomment">/// Get an iterator over this array with chunks of size `chunk_size`.</span>
+            <span class="doccomment">///</span>
+            <span class="doccomment">/// # Examples</span>
+            <span class="doccomment">///</span>
+            <span class="doccomment">/// ```</span>
+            <span class="doccomment">/// use hacspec::prelude::*;</span>
+            <span class="doccomment">///</span>
+            <span class="doccomment">/// public_bytes!(Block, 5);</span>
+            <span class="doccomment">/// let a = Block::from([0, 1, 2, 3, 4]);</span>
+            <span class="doccomment">/// let mut a_chunks = a.chunks(2);</span>
+            <span class="doccomment">/// let a_chunk = a_chunks.next().unwrap();</span>
+            <span class="doccomment">/// assert_eq!(a_chunk.0, 2);</span>
+            <span class="doccomment">/// assert_eq!(a_chunk.1, Seq::&lt;u8&gt;::from_array(&amp;[0, 1]));</span>
+            <span class="doccomment">/// let a_chunk = a_chunks.next().unwrap();</span>
+            <span class="doccomment">/// assert_eq!(a_chunk.0, 2);</span>
+            <span class="doccomment">/// assert_eq!(a_chunk.1, Seq::&lt;u8&gt;::from_array(&amp;[2, 3]));</span>
+            <span class="doccomment">/// let a_chunk = a_chunks.next().unwrap();</span>
+            <span class="doccomment">/// assert_eq!(a_chunk.0, 1);</span>
+            <span class="doccomment">/// assert_eq!(a_chunk.1, Seq::&lt;u8&gt;::from_array(&amp;[4]));</span>
+            <span class="doccomment">///</span>
+            <span class="doccomment">/// let a = Block::from([0, 1, 2, 3, 4]);</span>
+            <span class="doccomment">/// for (l, chunk) in a.chunks(2) {</span>
+            <span class="doccomment">///     println!(&quot;{:x?}&quot;, chunk); // prints [0, 1], [2, 3], [4]</span>
+            <span class="doccomment">/// }</span>
+            <span class="doccomment">/// ```</span>
+            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chunks</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+                <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
+                <span class="ident">chunk_size</span>: <span class="ident">usize</span>,
+            ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">usize</span>, <span class="ident">Seq</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>)<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
+                <span class="self">self</span>.<span class="number">0</span>
+                    .<span class="ident">chunks</span>(<span class="ident">chunk_size</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> (<span class="ident">c</span>.<span class="ident">len</span>(), <span class="ident">Seq</span>::<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">from</span>(<span class="ident">c</span>)))
             }
         }
 
@@ -770,14 +842,24 @@
         <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">tbase</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
             <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">v</span>: <span class="kw-2">&amp;</span>[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">tbase</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
                 <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">v</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>);
-                <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">v</span>[..].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">classify</span>(<span class="kw-2">*</span><span class="ident">x</span>)).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span><span class="op">&gt;</span>())
+                <span class="self">Self</span>::<span class="ident">from</span>(
+                    <span class="ident">v</span>[..]
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">classify</span>(<span class="kw-2">*</span><span class="ident">x</span>))
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                )
             }
         }
 
         <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span>[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">tbase</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
             <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">v</span>: [<span class="macro-nonterminal">$</span><span class="macro-nonterminal">tbase</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
                 <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">v</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>);
-                <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">v</span>[..].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">classify</span>(<span class="kw-2">*</span><span class="ident">x</span>)).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span><span class="op">&gt;</span>())
+                <span class="self">Self</span>::<span class="ident">from</span>(
+                    <span class="ident">v</span>[..]
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">classify</span>(<span class="kw-2">*</span><span class="ident">x</span>))
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                )
             }
         }
     };
@@ -824,12 +906,22 @@
         <span class="comment">// Conversion function between public and secret array versions.</span>
         <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">public_name</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
             <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">v</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">public_name</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
-                <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">v</span>[..].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">classify</span>(<span class="kw-2">*</span><span class="ident">x</span>)).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span><span class="op">&gt;</span>())
+                <span class="self">Self</span>::<span class="ident">from</span>(
+                    <span class="ident">v</span>[..]
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">classify</span>(<span class="kw-2">*</span><span class="ident">x</span>))
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                )
             }
         }
         <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">public_name</span> {
             <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">v</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">public_name</span> {
-                <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">v</span>[..].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">declassify</span>(<span class="kw-2">*</span><span class="ident">x</span>)).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">tbase</span><span class="op">&gt;</span><span class="op">&gt;</span>())
+                <span class="self">Self</span>::<span class="ident">from</span>(
+                    <span class="ident">v</span>[..]
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span>::<span class="ident">declassify</span>(<span class="kw-2">*</span><span class="ident">x</span>))
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">tbase</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                )
             }
         }
     };
