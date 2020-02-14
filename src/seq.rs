@@ -188,12 +188,8 @@ impl<T: Copy + Default> Seq<T> {
         a
     }
 
-    pub fn chunks(&self, chunk_size: usize) -> std::slice::Chunks<'_, T> {
-        self.b.chunks(chunk_size)
-    }
-
-    pub fn chunks_exact(&self, chunk_size: usize) -> std::slice::ChunksExact<'_, T> {
-        self.b.chunks_exact(chunk_size)
+    pub fn chunks<'a>(&'a self, chunk_size: usize) -> impl Iterator<Item = (usize, Seq<T>)> + 'a {
+        self.b.chunks(chunk_size).map(|c| (c.len(), Seq::<T>::from(c)))
     }
 }
 
