@@ -189,7 +189,9 @@ impl<T: Copy + Default> Seq<T> {
     }
 
     pub fn chunks<'a>(&'a self, chunk_size: usize) -> impl Iterator<Item = (usize, Seq<T>)> + 'a {
-        self.b.chunks(chunk_size).map(|c| (c.len(), Seq::<T>::from(c)))
+        self.b
+            .chunks(chunk_size)
+            .map(|c| (c.len(), Seq::<T>::from(c)))
     }
 }
 

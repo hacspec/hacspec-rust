@@ -24,14 +24,13 @@
 use rand;
 use std::convert::AsMut;
 use std::ops::{Index, IndexMut, Range, RangeFull};
-use std::any::TypeId;
 
-pub mod util;
-pub mod prelude;
-pub mod test_vectors;
-pub mod seq;
 pub mod array;
 pub mod poly;
+pub mod prelude;
+pub mod seq;
+pub mod test_vectors;
+pub mod util;
 
 use crate::prelude::*;
 
@@ -176,5 +175,5 @@ macro_rules! field_integer {
 /// Compute ceil(a/b), returning a u64.
 /// Note that float-uint conversion might be lossy.
 pub fn div_ceil(a: usize, b: usize) -> u64 {
-    (f64::ceil((a as f64)/(b as f64))) as u64
+    (f64::ceil((a as f64) / (b as f64))) as u64
 }

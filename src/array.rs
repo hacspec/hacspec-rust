@@ -1,8 +1,8 @@
 //!
 //! # Arrays
-//! 
+//!
 //! This module implements fixed-length arrays and utility functions for it.
-//! 
+//!
 
 #[macro_export]
 macro_rules! bytes {
@@ -10,17 +10,15 @@ macro_rules! bytes {
         array!($name, $l, U8, u8);
 
         impl $name {
-            pub fn to_U32s_be(&self) -> [U32; $l/4] {
-                let mut out = [U32::default(); $l/4];
+            pub fn to_U32s_be(&self) -> [U32; $l / 4] {
+                let mut out = [U32::default(); $l / 4];
                 for (i, block) in self.0.chunks(4).enumerate() {
                     out[i] = u32_from_be_bytes(block.into());
                 }
                 out
             }
             pub fn to_hex(&self) -> String {
-                let strs: Vec<String> = self.0.iter()
-                               .map(|b| format!("{:02x}", b))
-                               .collect();
+                let strs: Vec<String> = self.0.iter().map(|b| format!("{:02x}", b)).collect();
                 strs.join("")
             }
         }
@@ -33,8 +31,8 @@ macro_rules! public_bytes {
         public_array!($name, $l, u8);
 
         impl $name {
-            pub fn to_u32s_be(&self) -> [u32; $l/4] {
-                let mut out = [0u32; $l/4];
+            pub fn to_u32s_be(&self) -> [u32; $l / 4] {
+                let mut out = [0u32; $l / 4];
                 for (i, block) in self.0.chunks(4).enumerate() {
                     debug_assert!(block.len() == 4);
                     out[i] = u32::from_be_bytes(to_array(block));
@@ -42,9 +40,7 @@ macro_rules! public_bytes {
                 out
             }
             pub fn to_hex(&self) -> String {
-                let strs: Vec<String> = self.0.iter()
-                               .map(|b| format!("{:02x}", b))
-                               .collect();
+                let strs: Vec<String> = self.0.iter().map(|b| format!("{:02x}", b)).collect();
                 strs.join("")
             }
         }
@@ -78,7 +74,7 @@ macro_rules! array_base {
                 Self(tmp.clone())
             }
         }
-        
+
         impl<'a> From<std::slice::Chunks<'_, $t>> for $name {
             fn from(v: std::slice::Chunks<'_, $t>) -> Self {
                 debug_assert!($l <= v.len());
@@ -154,13 +150,13 @@ macro_rules! array_base {
             pub fn len(&self) -> usize {
                 $l
             }
-            pub fn to_bytes_be(&self) -> [u8; $l*core::mem::size_of::<$t>()] {
+            pub fn to_bytes_be(&self) -> [u8; $l * core::mem::size_of::<$t>()] {
                 const FACTOR: usize = core::mem::size_of::<$t>();
-                let mut out = [0u8; $l*FACTOR];
+                let mut out = [0u8; $l * FACTOR];
                 for i in 0..$l {
                     let tmp = <$t>::from(self[i]).to_be_bytes();
                     for j in 0..FACTOR {
-                        out[i*FACTOR+j] = tmp[j];
+                        out[i * FACTOR + j] = tmp[j];
                     }
                 }
                 out
@@ -191,8 +187,13 @@ macro_rules! array_base {
             ///     println!("{:x?}", chunk); // prints [0, 1], [2, 3], [4]
             /// }
             /// ```
-            pub fn chunks<'a>(&'a self, chunk_size: usize) -> impl Iterator<Item = (usize, Seq<$t>)> + 'a {
-                self.0.chunks(chunk_size).map(|c| (c.len(), Seq::<$t>::from(c)))
+            pub fn chunks<'a>(
+                &'a self,
+                chunk_size: usize,
+            ) -> impl Iterator<Item = (usize, Seq<$t>)> + 'a {
+                self.0
+                    .chunks(chunk_size)
+                    .map(|c| (c.len(), Seq::<$t>::from(c)))
             }
         }
 
@@ -373,14 +374,24 @@ macro_rules! array {
         impl From<&[$tbase]> for $name {
             fn from(v: &[$tbase]) -> $name {
                 debug_assert!(v.len() <= $l);
-                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+                Self::from(
+                    v[..]
+                        .iter()
+                        .map(|x| <$t>::classify(*x))
+                        .collect::<Vec<$t>>(),
+                )
             }
         }
 
         impl From<[$tbase; $l]> for $name {
             fn from(v: [$tbase; $l]) -> $name {
                 debug_assert!(v.len() == $l);
-                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+                Self::from(
+                    v[..]
+                        .iter()
+                        .map(|x| <$t>::classify(*x))
+                        .collect::<Vec<$t>>(),
+                )
             }
         }
     };
@@ -427,12 +438,22 @@ macro_rules! both_arrays {
         // Conversion function between public and secret array versions.
         impl From<$public_name> for $name {
             fn from(v: $public_name) -> $name {
-                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+                Self::from(
+                    v[..]
+                        .iter()
+                        .map(|x| <$t>::classify(*x))
+                        .collect::<Vec<$t>>(),
+                )
             }
         }
         impl From<$name> for $public_name {
             fn from(v: $name) -> $public_name {
-                Self::from(v[..].iter().map(|x| <$t>::declassify(*x)).collect::<Vec<$tbase>>())
+                Self::from(
+                    v[..]
+                        .iter()
+                        .map(|x| <$t>::declassify(*x))
+                        .collect::<Vec<$tbase>>(),
+                )
             }
         }
     };
