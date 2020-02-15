@@ -177,6 +177,12 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//!</span>
 <span class="doccomment">//! hacspec consists of three parts:</span>
@@ -214,6 +220,12 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 
+<span class="comment">// The following are only for documentation purposes.</span>
+<span class="macro">bytes</span><span class="macro">!</span>(<span class="ident">DocSecretBytes</span>, <span class="number">64</span>);
+<span class="macro">public_bytes</span><span class="macro">!</span>(<span class="ident">DocPublicBytes</span>, <span class="number">64</span>);
+<span class="macro">array</span><span class="macro">!</span>(<span class="ident">DocSecretArray</span>, <span class="number">64</span>, <span class="ident">U32</span>);
+<span class="macro">array</span><span class="macro">!</span>(<span class="ident">DocPublicArray</span>, <span class="number">64</span>, <span class="ident">u32</span>);
+
 <span class="doccomment">/// Common trait for all byte arrays and sequences.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SeqTrait</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Copy</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">raw</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">T</span>];
@@ -224,11 +236,11 @@
 <span class="macro">bytes</span><span class="macro">!</span>(<span class="ident">U32Word</span>, <span class="number">4</span>);
 <span class="macro">bytes</span><span class="macro">!</span>(<span class="ident">U128Word</span>, <span class="number">16</span>);
 <span class="macro">bytes</span><span class="macro">!</span>(<span class="ident">U64Word</span>, <span class="number">8</span>);
-<span class="macro">public_array</span><span class="macro">!</span>(<span class="ident">Counter</span>, <span class="number">2</span>, <span class="ident">usize</span>);
+<span class="macro">array</span><span class="macro">!</span>(<span class="ident">Counter</span>, <span class="number">2</span>, <span class="ident">usize</span>);
 
-<span class="macro">public_array</span><span class="macro">!</span>(<span class="ident">u32Word</span>, <span class="number">4</span>, <span class="ident">u8</span>);
-<span class="macro">public_array</span><span class="macro">!</span>(<span class="ident">u64Word</span>, <span class="number">8</span>, <span class="ident">u8</span>);
-<span class="macro">public_array</span><span class="macro">!</span>(<span class="ident">u128Word</span>, <span class="number">16</span>, <span class="ident">u8</span>);
+<span class="macro">array</span><span class="macro">!</span>(<span class="ident">u32Word</span>, <span class="number">4</span>, <span class="ident">u8</span>);
+<span class="macro">array</span><span class="macro">!</span>(<span class="ident">u64Word</span>, <span class="number">8</span>, <span class="ident">u8</span>);
+<span class="macro">array</span><span class="macro">!</span>(<span class="ident">u128Word</span>, <span class="number">16</span>, <span class="ident">u8</span>);
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">u32_to_le_bytes</span>(<span class="ident">x</span>: <span class="ident">U32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">U32Word</span> {
     <span class="ident">U32Word</span>([
