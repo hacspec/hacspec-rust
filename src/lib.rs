@@ -34,6 +34,12 @@ pub mod util;
 
 use crate::prelude::*;
 
+// The following are only for documentation purposes.
+bytes!(DocSecretBytes, 64);
+public_bytes!(DocPublicBytes, 64);
+array!(DocSecretArray, 64, U32);
+array!(DocPublicArray, 64, u32);
+
 /// Common trait for all byte arrays and sequences.
 pub trait SeqTrait<T: Copy> {
     fn raw<'a>(&'a self) -> &'a [T];
@@ -44,11 +50,11 @@ pub trait SeqTrait<T: Copy> {
 bytes!(U32Word, 4);
 bytes!(U128Word, 16);
 bytes!(U64Word, 8);
-public_array!(Counter, 2, usize);
+array!(Counter, 2, usize);
 
-public_array!(u32Word, 4, u8);
-public_array!(u64Word, 8, u8);
-public_array!(u128Word, 16, u8);
+array!(u32Word, 4, u8);
+array!(u64Word, 8, u8);
+array!(u128Word, 16, u8);
 
 pub fn u32_to_le_bytes(x: U32) -> U32Word {
     U32Word([

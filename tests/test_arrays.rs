@@ -2,7 +2,7 @@ use hacspec::prelude::*;
 
 #[test]
 fn test_public_array_u32() {
-    public_array!(TestSeq, 64, u32);
+    array!(TestSeq, 64, u32);
 
     both_arrays!(PublicState, State, 73, U32, u32);
     let x = PublicState::new();
