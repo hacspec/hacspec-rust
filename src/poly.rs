@@ -6,11 +6,105 @@
 //! This module implements polynomials ℤn[x]/mℤ[x].
 //! Polynomials are variable sized only for now.
 //!
+//! Coefficients are currently stored as u128 or i128.
+//! TODO: If necessary, we could extend the definition to larger integers.
+//!
 
 // TODO: cleanup
-use abstract_integers::Integer;
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Sub};
+
+/// Trait that needs to be implemented by all integers that are used as coefficients.
+/// This is done here for ℤn over `i128` and `u128`.
+pub trait Integer<T> {
+    fn from_literal(x: u128) -> T;
+    fn from_signed_literal(x: i128) -> T;
+    fn inv(x: T, n: T) -> T;
+    fn max() -> T;
+    /// Lift the possibly negative result back up mod n.
+    fn sub_lift(self, rhs: T, n: T) -> T;
+    /// Compute (self - rhs) % n.
+    fn sub_mod(self, rhs: T, n: T) -> T;
+    /// `(self + rhs) % n`
+    fn add_mod(self, rhs: T, n: T) -> T;
+    fn abs(self) -> T;
+}
+
+impl Integer<u128> for u128 {
+    fn from_literal(x: u128) -> u128 {
+        x
+    }
+    fn from_signed_literal(x: i128) -> u128 {
+        x as u128
+    }
+    /// **Panics**
+    fn inv(x: u128, n: u128) -> u128 {
+        extended_euclid_invert(x, n, false)
+    }
+    fn sub_lift(self, rhs: u128, n: u128) -> u128 {
+        self.sub_mod(rhs, n)
+    }
+    fn sub_mod(self, rhs: u128, n: u128) -> u128 {
+        if n == 0 {
+            return self - rhs;
+        }
+
+        let mut lhs = self;
+        while lhs < rhs {
+            lhs += n;
+        }
+        lhs - rhs
+    }
+    fn add_mod(self, rhs: u128, n: u128) -> u128 {
+        if n != 0 {
+            (self + rhs) % n
+        } else {
+            self + rhs
+        }
+    }
+    fn max() -> u128 {
+        u128::max_value()
+    }
+    fn abs(self) -> u128 {
+        self
+    }
+}
+
+impl Integer<i128> for i128 {
+    /// **Warning** might be lossy
+    fn from_literal(x: u128) -> i128 {
+        x as i128
+    }
+    fn from_signed_literal(x: i128) -> i128 {
+        x
+    }
+    fn inv(x: i128, n: i128) -> i128 {
+        extended_euclid_invert(x.abs(), n.abs(), true)
+    }
+    fn sub_lift(self, rhs: i128, n: i128) -> i128 {
+        self - rhs
+    }
+    fn sub_mod(self, rhs: i128, n: i128) -> i128 {
+        if n != 0 {
+            signed_mod(self - rhs, n)
+        } else {
+            self - rhs
+        }
+    }
+    fn add_mod(self, rhs: i128, n: i128) -> i128 {
+        if n != 0 {
+            signed_mod(self + rhs, n)
+        } else {
+            self + rhs
+        }
+    }
+    fn max() -> i128 {
+        i128::max_value()
+    }
+    fn abs(self) -> i128 {
+        self.abs()
+    }
+}
 
 /// Traits that have to be implemented by the type used for coefficients.
 pub trait TRestrictions<T>:
@@ -44,6 +138,15 @@ impl<T> TRestrictions<T> for T where
 
 ///! First we implement all functions on slices of T.
 ///! Note that this is equivalent to ℤn[x] (or ℤ[x] depending, depending on T).
+
+/// Rust's built-in modulo (x % n) is signed. This lifts x into ℤn+.
+fn signed_mod(x: i128, n: i128) -> i128 {
+    let mut ret = x % n;
+    while ret < 0 {
+        ret += n;
+    }
+    ret
+}
 
 fn pad<T: TRestrictions<T>>(v: &[T], l: usize) -> Vec<T> {
     let mut out = v.to_vec();
@@ -96,18 +199,17 @@ fn poly_sub<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     debug_assert!(x.len() == y.len());
     let mut out = vec![T::default(); x.len()];
     for (a, (&b, &c)) in out.iter_mut().zip(x.iter().zip(y.iter())) {
-        // This is sub mod: `b - c % n`
         *a = b.sub_mod(c, n);
     }
     out
 }
 
-fn poly_add<T: TRestrictions<T>>(x: &[T], y: &[T]) -> Vec<T> {
+fn poly_add<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let (x, y) = normalize!(x, y);
     debug_assert!(x.len() == y.len());
     let mut out = vec![T::default(); x.len()];
     for (a, (&b, &c)) in out.iter_mut().zip(x.iter().zip(y.iter())) {
-        *a = b + c;
+        *a = b.add_mod(c, n);
     }
     out
 }
@@ -174,7 +276,7 @@ fn euclid_div<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> (Vec<T>, Vec<T>) {
         debug_assert!(c_idx != T::default());
 
         let s = monomial(c_idx, idx);
-        q = poly_add(&q[..], &s[..]);
+        q = poly_add(&q[..], &s[..], n);
         let sy = poly_mul(&s[..], &y[..]);
         r = poly_sub(&r, &sy, n);
 
@@ -197,6 +299,43 @@ fn is_zero<T: TRestrictions<T>>(v: &[T]) -> bool {
 
 fn poly_z_inv<T: TRestrictions<T>>(v: &[T], n: T) -> Vec<T> {
     v.iter().map(|&x| T::inv(x, n)).collect::<Vec<T>>()
+}
+
+/// Extended euclidean algorithm to compute the inverse of x in ℤ/n
+///
+/// **Panics** if x is not invertible.
+///
+fn extended_euclid_invert<T: TRestrictions<T>>(x: T, n: T, signed: bool) -> T {
+    let mut t = T::default();
+    let mut r = n;
+    let mut new_t = T::from_literal(1);
+    let mut new_r = x;
+
+    while new_r != T::default() {
+        let q: T = r / new_r;
+
+        let tmp = new_r.clone();
+        new_r = r.sub_lift(q * new_r, n);
+        r = tmp;
+
+        let tmp = new_t.clone();
+        new_t = t.sub_lift(q * new_t, n);
+        t = tmp;
+    }
+
+    if r > T::from_literal(1) {
+        panic!("{:x?} is not invertible in ℤ/{:x?}", x, n);
+    }
+    println!("{:?}", t);
+    if t < T::default() {
+        if signed {
+            t = t.abs()
+        } else {
+            t = t + n
+        };
+    };
+
+    t
 }
 
 /// Extended euclidean algorithm to compute the inverse of x in yℤ[x]
@@ -233,17 +372,18 @@ fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
 pub struct Poly<T: TRestrictions<T>> {
     poly: Vec<T>,
     irr: Vec<T>,
+    /// `n` is set to 0 if not specified and ignored.
     n: T,
 }
 
 impl<T: TRestrictions<T>> Poly<T> {
-    fn build_from_poly(p: &[T]) -> Self {
-        Self {
-            poly: p.to_vec(),
-            irr: Vec::<T>::new(),
-            n: T::default(),
-        }
-    }
+    // fn build_from_poly(p: &[T]) -> Self {
+    //     Self {
+    //         poly: p.to_vec(),
+    //         irr: Vec::<T>::new(),
+    //         n: T::default(),
+    //     }
+    // }
     fn build_from_irr_poly(irr_in: &[T], p: &[T]) -> Self {
         Self {
             poly: p.to_vec(),
@@ -264,9 +404,20 @@ impl<T: TRestrictions<T>> Poly<T> {
     }
 
     fn i128_to_t(v: &[i128]) -> Vec<T> {
-        v.iter().map(|x| T::from_signed_literal(*x)).collect::<Vec<T>>()
+        v.iter()
+            .map(|x| T::from_signed_literal(*x))
+            .collect::<Vec<T>>()
     }
 
+    // FIXME: fix the horrible naming and API
+    // TODO: should this reduce p and n?
+    pub fn new_full(irr_in: &[u128], p: &[u128], n_in: u128) -> Self {
+        Self {
+            poly: Self::u128_to_t(p),
+            irr: Self::u128_to_t(irr_in),
+            n: T::from_literal(n_in),
+        }
+    }
     // TODO: should this reduce p?
     pub fn new(irr_in: &[u128], p: &[u128]) -> Self {
         Self {
@@ -283,6 +434,14 @@ impl<T: TRestrictions<T>> Poly<T> {
             n: T::default(),
         }
     }
+    // TODO: should this reduce p and n?
+    pub fn new_signed_full(irr_in: &[i128], p: &[i128], n_in: i128) -> Self {
+        Self {
+            poly: Self::i128_to_t(p),
+            irr: Self::i128_to_t(irr_in),
+            n: T::from_signed_literal(n_in),
+        }
+    }
     // TODO: should this reduce p?
     pub fn new_monomial(irr_in: &[u128], c: T, d: usize) -> Self {
         Self {
@@ -297,7 +456,7 @@ impl<T: TRestrictions<T>> Poly<T> {
         Self {
             poly: Self::u128_to_t(p),
             irr: self.irr[..].to_vec(),
-            n: T::default(),
+            n: self.n,
         }
     }
 
@@ -306,7 +465,7 @@ impl<T: TRestrictions<T>> Poly<T> {
     /// in `T` that don't fit in `i128` use generators on `T`.
     pub fn random(irr_in: &[T], r: std::ops::Range<i128>, n_in: T) -> Self {
         Self {
-            poly: random_poly(irr_in.len() - 1, r.start, r.end+1),
+            poly: random_poly(irr_in.len() - 1, r.start, r.end + 1),
             irr: irr_in.to_vec(),
             n: n_in,
         }
@@ -322,7 +481,7 @@ impl<T: TRestrictions<T>> Poly<T> {
         Self {
             poly: euclid_div(&self.poly, &self.irr, self.n).1,
             irr: self.irr[..].to_vec(),
-            n: T::default(),
+            n: self.n,
         }
         .truncate()
     }
@@ -332,7 +491,7 @@ impl<T: TRestrictions<T>> Poly<T> {
         Self {
             poly: pad(&self.poly, l),
             irr: self.irr[..].to_vec(),
-            n: T::default(),
+            n: self.n,
         }
     }
     /// Truncate self.poly, removing trailing zeroes.
@@ -340,7 +499,7 @@ impl<T: TRestrictions<T>> Poly<T> {
         Self {
             poly: truncate(&self.poly),
             irr: self.irr[..].to_vec(),
-            n: T::default(),
+            n: self.n,
         }
     }
 
@@ -351,12 +510,12 @@ impl<T: TRestrictions<T>> Poly<T> {
             Self {
                 poly: q,
                 irr: self.irr.clone(),
-                n: T::default(),
+                n: self.n,
             },
             Self {
                 poly: r,
                 irr: self.irr.clone(),
-                n: T::default(),
+                n: self.n,
             },
         )
     }
@@ -366,7 +525,7 @@ impl<T: TRestrictions<T>> Poly<T> {
         Self {
             poly: extended_euclid(&self.poly, &self.irr, self.n),
             irr: self.irr.clone(),
-            n: T::default(),
+            n: self.n,
         }
     }
 }
@@ -386,6 +545,15 @@ macro_rules! impl_from {
                 Poly::new(
                     &v.0.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
                     &v.1.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
+                )
+            }
+        }
+        impl<T: TRestrictions<T>> From<(&[$t], &[$t], $t)> for Poly<T> {
+            fn from(v: (&[$t], &[$t], $t)) -> Poly<T> {
+                Poly::new_full(
+                    &v.0.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
+                    &v.1.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
+                    u128::from(v.2),
                 )
             }
         }
@@ -410,6 +578,15 @@ macro_rules! impl_from_signed {
                 )
             }
         }
+        impl<T: TRestrictions<T>> From<(&[$t], &[$t], $t)> for Poly<T> {
+            fn from(v: (&[$t], &[$t], $t)) -> Poly<T> {
+                Poly::new_signed_full(
+                    &v.0.iter().map(|&x| i128::from(x)).collect::<Vec<i128>>(),
+                    &v.1.iter().map(|&x| i128::from(x)).collect::<Vec<i128>>(),
+                    i128::from(v.2)
+                )
+            }
+        }
     };
 }
 
@@ -430,7 +607,7 @@ impl<T: TRestrictions<T>> Sub for Poly<T> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         debug_assert!(self.irr == rhs.irr);
-        debug_assert!(self.n == rhs.n && self.n != T::default());
+        debug_assert!(self.n == rhs.n);
         Self {
             poly: poly_sub(&self.poly, &rhs.poly, self.n),
             irr: self.irr.clone(),
@@ -446,7 +623,7 @@ impl<T: TRestrictions<T>> Add for Poly<T> {
         debug_assert!(self.irr == rhs.irr);
         debug_assert!(self.n == rhs.n);
         Self {
-            poly: poly_add(&self.poly, &rhs.poly),
+            poly: poly_add(&self.poly, &rhs.poly, self.n),
             irr: self.irr.clone(),
             n: self.n,
         }
@@ -467,56 +644,3 @@ impl<T: TRestrictions<T>> std::ops::Mul for Poly<T> {
         .reduce()
     }
 }
-
-// ℤn for `i128` and `u128`.
-
-// #[derive(Copy, Clone)]
-// pub struct Int<T: TRestrictions<T>> {
-//     v: T,
-//     n: T,
-// }
-
-// impl<T: TRestrictions<T>> Int<T> {
-//     fn inv(&self) -> Self {
-//         // FIXME
-//         println!("invert {:?} mod {:?}", self.v, self.n);
-//         unimplemented!()
-//     }
-// }
-
-// impl Integer<Int<u128>> for Int<u128> {
-//     fn from_literal(x: u128) -> Int<u128> {
-//         Self {
-//             v: x,
-//             n: 0,
-//         }
-//     }
-//     fn from_signed_literal(x: i128) -> Int<u128> {
-//         Self {
-//             v: x as u128,
-//             n: 0,
-//         }
-//     }
-//     fn inv(x: Int<u128>) -> Int<u128> {
-//         x.inv()
-//     }
-// }
-
-// impl Integer<Int<i128>> for Int<i128> {
-//     /// **Warning** might be lossy
-//     fn from_literal(x: u128) -> Int<i128> {
-//         Self {
-//             v: x as i128,
-//             n: 0,
-//         }
-//     }
-//     fn from_signed_literal(x: i128) -> Int<i128> {
-//         Self {
-//             v: x,
-//             n: 0,
-//         }
-//     }
-//     fn inv(x: Int<i128>) -> Int<i128> {
-//         x.inv()
-//     }
-// }
