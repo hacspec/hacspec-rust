@@ -1,6 +1,6 @@
 //!
 //! Utility functions for hacspec internally.
-//! 
+//!
 
 use std::num::ParseIntError;
 

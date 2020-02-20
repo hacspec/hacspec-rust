@@ -1,60 +1,24 @@
 //!
 //! # Arrays
-//! 
+//!
 //! This module implements fixed-length arrays and utility functions for it.
-//! 
+//!
+//! Note that implementations have to be created with one of the provided macros
+//! such that there's no documentation in here.
+//!
+//! You can find examples for the different types of arrays here:
+//! * [DocSecretBytes](../struct.DocSecretBytes.html) for `bytes!(DocSecretBytes, 64)`
+//! * [DocPublicBytes](../struct.DocPublicBytes.html) for `public_bytes!(DocPublicBytes, 64)`
+//! * [DocSecretArray](../struct.DocSecretArray.html) for `array!(DocSecretArray, 64, U32)`
+//! * [DocPublicArray](../struct.DocPublicArray.html) for `array!(DocPublicArray, 64, u32)`
+//!
+//! **Note** that all macros starting with an underscore (`_array_base` etc.)
+//! are note intended for public use. Unfortunately it's not possible to hide
+//! them.
 
 #[macro_export]
-macro_rules! bytes {
-    ($name:ident, $l:expr) => {
-        array!($name, $l, U8, u8);
-
-        impl $name {
-            pub fn to_U32s_be(&self) -> [U32; $l/4] {
-                let mut out = [U32::default(); $l/4];
-                for (i, block) in self.0.chunks(4).enumerate() {
-                    out[i] = u32_from_be_bytes(block.into());
-                }
-                out
-            }
-            pub fn to_hex(&self) -> String {
-                let strs: Vec<String> = self.0.iter()
-                               .map(|b| format!("{:02x}", b))
-                               .collect();
-                strs.join("")
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! public_bytes {
-    ($name:ident, $l:expr) => {
-        public_array!($name, $l, u8);
-
-        impl $name {
-            pub fn to_u32s_be(&self) -> [u32; $l/4] {
-                let mut out = [0u32; $l/4];
-                for (i, block) in self.0.chunks(4).enumerate() {
-                    debug_assert!(block.len() == 4);
-                    out[i] = u32::from_be_bytes(to_array(block));
-                }
-                out
-            }
-            pub fn to_hex(&self) -> String {
-                let strs: Vec<String> = self.0.iter()
-                               .map(|b| format!("{:02x}", b))
-                               .collect();
-                strs.join("")
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! array_base {
-    // TODO: do we really need to pass in tbase? Should be always the same. Maybe make map from t to tbase?
-    ($name:ident,$l:expr,$t:ty, $tbase:ty) => {
+macro_rules! _array_base {
+    ($name:ident,$l:expr,$t:ty) => {
         /// Fixed length byte array.
         /// Because Rust requires fixed length arrays to have a known size at
         /// compile time there's no generic fixed length byte array here.
@@ -76,14 +40,6 @@ macro_rules! array_base {
                     tmp[i] = v[i];
                 }
                 Self(tmp.clone())
-            }
-        }
-        
-        impl<'a> From<std::slice::Chunks<'_, $t>> for $name {
-            fn from(v: std::slice::Chunks<'_, $t>) -> Self {
-                debug_assert!($l <= v.len());
-                let tmp: Self = v.clone().into();
-                $name::from_sub_pad(tmp, 0..v.len())
             }
         }
 
@@ -154,20 +110,50 @@ macro_rules! array_base {
             pub fn len(&self) -> usize {
                 $l
             }
-            pub fn to_bytes_be(&self) -> [u8; $l*core::mem::size_of::<$t>()] {
+            pub fn to_bytes_be(&self) -> [u8; $l * core::mem::size_of::<$t>()] {
                 const FACTOR: usize = core::mem::size_of::<$t>();
-                let mut out = [0u8; $l*FACTOR];
+                let mut out = [0u8; $l * FACTOR];
                 for i in 0..$l {
                     let tmp = <$t>::from(self[i]).to_be_bytes();
                     for j in 0..FACTOR {
-                        out[i*FACTOR+j] = tmp[j];
+                        out[i * FACTOR + j] = tmp[j];
                     }
                 }
                 out
             }
 
-            pub fn chunks(&self, chunk_size: usize) -> std::slice::Chunks<'_, $t> {
-                self.0.chunks(chunk_size)
+            /// Get an iterator over this array with chunks of size `chunk_size`.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use hacspec::prelude::*;
+            ///
+            /// public_bytes!(Block, 5);
+            /// let a = Block::from([0, 1, 2, 3, 4]);
+            /// let mut a_chunks = a.chunks(2);
+            /// let a_chunk = a_chunks.next().unwrap();
+            /// assert_eq!(a_chunk.0, 2);
+            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[0, 1]));
+            /// let a_chunk = a_chunks.next().unwrap();
+            /// assert_eq!(a_chunk.0, 2);
+            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[2, 3]));
+            /// let a_chunk = a_chunks.next().unwrap();
+            /// assert_eq!(a_chunk.0, 1);
+            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[4]));
+            ///
+            /// let a = Block::from([0, 1, 2, 3, 4]);
+            /// for (l, chunk) in a.chunks(2) {
+            ///     println!("{:x?}", chunk); // prints [0, 1], [2, 3], [4]
+            /// }
+            /// ```
+            pub fn chunks<'a>(
+                &'a self,
+                chunk_size: usize,
+            ) -> impl Iterator<Item = (usize, Seq<$t>)> + 'a {
+                self.0
+                    .chunks(chunk_size)
+                    .map(|c| (c.len(), Seq::<$t>::from(c)))
             }
         }
 
@@ -254,6 +240,16 @@ macro_rules! array_base {
                 $name(tmp.clone())
             }
         }
+        impl From<Seq<$t>> for $name {
+            fn from(x: Seq<$t>) -> $name {
+                debug_assert!(x.len() <= $l);
+                let mut tmp = [<$t>::default(); $l];
+                for (i, e) in x.iter().enumerate() {
+                    tmp[i] = *e;
+                }
+                $name(tmp.clone())
+            }
+        }
 
         impl $name {
             pub fn random() -> $name {
@@ -261,11 +257,18 @@ macro_rules! array_base {
                 tmp.copy_from_slice(&$name::get_random_vec($l)[..$l]);
                 Self(tmp.clone())
             }
+            fn hex_string_to_vec(s: &str) -> Vec<$t> {
+                debug_assert!(s.len() % std::mem::size_of::<$t>() == 0);
+                let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
+                    .step_by(2)
+                    .map(|i| u8::from_str_radix(&s[i..i + 2], 16).map(<$t>::from))
+                    .collect();
+                b.expect("Error parsing hex string")
+            }
         }
 
         /// Read hex string to Bytes.
         impl From<&str> for $name {
-            // TODO: this only works for bytes
             fn from(s: &str) -> $name {
                 let v = $name::hex_string_to_vec(s);
                 let mut o = $name::new();
@@ -292,27 +295,13 @@ macro_rules! array_base {
 }
 
 #[macro_export]
-macro_rules! array {
+/// This creates arrays for secret integers, i.e. `$t` is the secret integer
+/// type and `$tbase` is the according Rust type.
+macro_rules! _secret_array {
     ($name:ident,$l:expr,$t:ty, $tbase:ty) => {
-        array_base!($name, $l, $t, $tbase);
+        _array_base!($name, $l, $t);
 
-        impl $name {
-            fn hex_string_to_vec(s: &str) -> Vec<$t> {
-                debug_assert!(s.len() % std::mem::size_of::<$t>() == 0);
-                let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
-                    .step_by(2)
-                    .map(|i| <$tbase>::from_str_radix(&s[i..i + 2], 16).map(<$t>::classify))
-                    .collect();
-                b.expect("Error parsing hex string")
-            }
-
-            pub fn get_random_vec(l: usize) -> Vec<$t> {
-                (0..l)
-                    .map(|_| <$t>::classify(rand::random::<$tbase>()))
-                    .collect()
-            }
-        }
-
+        /// **Warning:** declassifies secret integer types.
         impl fmt::Debug for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 self.0[..]
@@ -322,6 +311,7 @@ macro_rules! array {
                     .fmt(f)
             }
         }
+        /// **Warning:** declassifies secret integer types.
         impl PartialEq for $name {
             fn eq(&self, other: &Self) -> bool {
                 self.0[..]
@@ -334,37 +324,53 @@ macro_rules! array {
                         .collect::<Vec<_>>()
             }
         }
-
+        impl $name {
+            pub fn get_random_vec(l: usize) -> Vec<$t> {
+                (0..l)
+                    .map(|_| <$t>::classify(rand::random::<$tbase>()))
+                    .collect()
+            }
+        }
         impl From<&[$tbase]> for $name {
             fn from(v: &[$tbase]) -> $name {
                 debug_assert!(v.len() <= $l);
-                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+                Self::from(
+                    v[..]
+                        .iter()
+                        .map(|x| <$t>::classify(*x))
+                        .collect::<Vec<$t>>(),
+                )
             }
         }
-
+        /// Create an array from a regular Rust array.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use hacspec::prelude::*;
+        ///
+        /// bytes!(Block, 5);
+        /// let b = Block::from([1, 2, 3, 4, 5]);
+        /// ```
         impl From<[$tbase; $l]> for $name {
             fn from(v: [$tbase; $l]) -> $name {
                 debug_assert!(v.len() == $l);
-                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+                Self::from(
+                    v[..]
+                        .iter()
+                        .map(|x| <$t>::classify(*x))
+                        .collect::<Vec<$t>>(),
+                )
             }
         }
     };
 }
 
 #[macro_export]
-macro_rules! public_array {
+macro_rules! _public_array {
     ($name:ident,$l:expr,$t:ty) => {
-        array_base!($name, $l, $t, $t);
+        _array_base!($name, $l, $t);
         impl $name {
-            fn hex_string_to_vec(s: &str) -> Vec<$t> {
-                debug_assert!(s.len() % std::mem::size_of::<$t>() == 0);
-                let b: Result<Vec<$t>, ParseIntError> = (0..s.len())
-                    .step_by(2)
-                    .map(|i| <$t>::from_str_radix(&s[i..i + 2], 16))
-                    .collect();
-                b.expect("Error parsing hex string")
-            }
-
             pub fn get_random_vec(l: usize) -> Vec<$t> {
                 (0..l).map(|_| rand::random::<$t>()).collect()
             }
@@ -383,21 +389,104 @@ macro_rules! public_array {
     };
 }
 
+// The following are the macros intended for use from the outside.
+
+#[macro_export]
+/// Create a new array with the given name, length, and type.
+macro_rules! array {
+    ($name:ident, $l:expr, U8) => {
+        _secret_array!($name, $l, U8, u8);
+        impl $name {
+            pub fn to_U32s_be(&self) -> [U32; $l / 4] {
+                let mut out = [U32::default(); $l / 4];
+                for (i, block) in self.0.chunks(4).enumerate() {
+                    out[i] = u32_from_be_bytes(block.into());
+                }
+                out
+            }
+            pub fn to_hex(&self) -> String {
+                let strs: Vec<String> = self.0.iter().map(|b| format!("{:02x}", b)).collect();
+                strs.join("")
+            }
+        }
+    };
+    ($name:ident, $l:expr, U16) => {
+        _secret_array!($name, $l, U16, u16);
+    };
+    ($name:ident, $l:expr, U32) => {
+        _secret_array!($name, $l, U32, u32);
+    };
+    ($name:ident, $l:expr, U64) => {
+        _secret_array!($name, $l, U64, u64);
+    };
+    ($name:ident, $l:expr, U128) => {
+        _secret_array!($name, $l, U128, u128);
+    };
+    ($name:ident, $l:expr, u8) => {
+        _public_array!($name, $l, u8);
+        impl $name {
+            pub fn to_u32s_be(&self) -> [u32; $l / 4] {
+                let mut out = [0u32; $l / 4];
+                for (i, block) in self.0.chunks(4).enumerate() {
+                    debug_assert!(block.len() == 4);
+                    out[i] = u32::from_be_bytes(to_array(block));
+                }
+                out
+            }
+            pub fn to_hex(&self) -> String {
+                let strs: Vec<String> = self.0.iter().map(|b| format!("{:02x}", b)).collect();
+                strs.join("")
+            }
+        }
+    };
+    ($name:ident, $l:expr, $t:ty) => {
+        _public_array!($name, $l, $t);
+    };
+}
+
+#[macro_export]
+/// Convenience function to create a new byte array (of type `U8`) with the given
+/// name and length.
+macro_rules! bytes {
+    ($name:ident, $l:expr) => {
+        array!($name, $l, U8);
+    };
+}
+
+#[macro_export]
+/// Convenience function to create a new public byte array (of type `u8`) with
+/// the given name and length.
+macro_rules! public_bytes {
+    ($name:ident, $l:expr) => {
+        array!($name, $l, u8);
+    };
+}
+
 #[macro_export]
 macro_rules! both_arrays {
     ($public_name:ident, $name:ident, $l:expr, $t:ty, $tbase:ty) => {
-        array!($name, $l, $t, $tbase);
-        public_array!($public_name, $l, $tbase);
+        _secret_array!($name, $l, $t, $tbase);
+        _public_array!($public_name, $l, $tbase);
 
         // Conversion function between public and secret array versions.
         impl From<$public_name> for $name {
             fn from(v: $public_name) -> $name {
-                Self::from(v[..].iter().map(|x| <$t>::classify(*x)).collect::<Vec<$t>>())
+                Self::from(
+                    v[..]
+                        .iter()
+                        .map(|x| <$t>::classify(*x))
+                        .collect::<Vec<$t>>(),
+                )
             }
         }
         impl From<$name> for $public_name {
             fn from(v: $name) -> $public_name {
-                Self::from(v[..].iter().map(|x| <$t>::declassify(*x)).collect::<Vec<$tbase>>())
+                Self::from(
+                    v[..]
+                        .iter()
+                        .map(|x| <$t>::declassify(*x))
+                        .collect::<Vec<$tbase>>(),
+                )
             }
         }
     };

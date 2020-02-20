@@ -188,12 +188,10 @@ impl<T: Copy + Default> Seq<T> {
         a
     }
 
-    pub fn chunks(&self, chunk_size: usize) -> std::slice::Chunks<'_, T> {
-        self.b.chunks(chunk_size)
-    }
-
-    pub fn chunks_exact(&self, chunk_size: usize) -> std::slice::ChunksExact<'_, T> {
-        self.b.chunks_exact(chunk_size)
+    pub fn chunks<'a>(&'a self, chunk_size: usize) -> impl Iterator<Item = (usize, Seq<T>)> + 'a {
+        self.b
+            .chunks(chunk_size)
+            .map(|c| (c.len(), Seq::<T>::from(c)))
     }
 }
 
@@ -286,6 +284,13 @@ impl<T: Copy> Index<usize> for Seq<T> {
 impl<T: Copy> IndexMut<usize> for Seq<T> {
     fn index_mut(&mut self, i: usize) -> &mut T {
         &mut self.b[i]
+    }
+}
+
+impl<T: Copy> Index<Range<usize>> for Seq<T> {
+    type Output = [T];
+    fn index(&self, r: Range<usize>) -> &[T] {
+        &self.b[r]
     }
 }
 

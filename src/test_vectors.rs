@@ -1,6 +1,6 @@
 //!
 //! Provide utilities to read test vectors from JSON files.
-//! 
+//!
 
 #[macro_export]
 macro_rules! create_test_vectors {
