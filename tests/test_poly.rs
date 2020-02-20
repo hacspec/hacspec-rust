@@ -143,22 +143,38 @@ fn test_poly_mul() {
     println!("{:x?} * {:x?} = {:x?}", a, b, r);
 }
 
-// #[test]
-// fn test_poly_inversion() {
-//     let irr = [2, 2, 0, 1];
-//     let a = Poly::<Q>::new(&irr, &[2, 2, 0]);
-//     let b = Poly::<Q>::new(&irr, &[1, 2, 2]);
-//     let c = Poly::<Q>::new(&irr, &[0, 0, 1]);
+#[test]
+fn test_poly_inversion() {
+    let irr = [2, 2, 0, 1];
+    let a = Poly::<u128>::new_full(&irr, &[2, 2, 0], 3);
+    let b = Poly::<u128>::new_full(&irr, &[1, 2, 2], 3);
+    let c = Poly::<u128>::new_full(&irr, &[0, 0, 1], 3);
 
-//     fn test_poly_inversion(p: Poly<Q>, irr: &[u128]) {
-//         let p_inv = p.inv();
-//         println!(" > p_inv: {:x?}", p_inv.clone());
-//         let test = p * p_inv;
-//         println!(" > (p_inv * p) % irr: {:x?}", test);
-//         assert_eq!(test, Poly::<Q>::new(&irr, &[1]));
-//     }
+    fn test_poly_inversion(p: Poly<u128>, irr: &[u128]) {
+        let p_inv = p.inv();
+        println!(" > p: {:x?}", p.clone());
+        println!(" > p_inv: {:x?}", p_inv.clone());
+        let test = p * p_inv;
+        println!(" > (p_inv * p) % irr: {:x?}", test);
+        assert_eq!(test, Poly::<u128>::new_full(&irr, &[1], 3));
+    }
 
-//     test_poly_inversion(a, &irr);
-//     test_poly_inversion(b, &irr);
-//     test_poly_inversion(c, &irr);
-// }
+    test_poly_inversion(a, &irr);
+    test_poly_inversion(b, &irr);
+    test_poly_inversion(c, &irr);
+
+    // let irr = random_poly::<u128>(2048, 0, 3);
+    // let a = Poly::<u128>::random(&irr, 0..3, 3);
+    // let b = Poly::<u128>::random(&irr, 0..3, 3);
+    // test_poly_inversion(a, &irr);
+    // test_poly_inversion(b, &irr);
+}
+
+#[test]
+#[should_panic]
+fn test_poly_inversion_panic() {
+    // Not invertible
+    let irr = [2, 2, 1, 2, 2, 1, 2, 0, 2, 0, 2, 2];
+    let a = Poly::<u128>::new_full(&irr, &[0, 1, 2, 0, 2, 2, 0, 0, 2, 0, 0], 3);
+    let a_inv = a.inv();
+}

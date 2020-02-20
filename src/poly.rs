@@ -10,7 +10,6 @@
 //! TODO: If necessary, we could extend the definition to larger integers.
 //!
 
-// TODO: cleanup
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Sub};
 
@@ -333,7 +332,7 @@ fn extended_euclid_invert<T: TRestrictions<T>>(x: T, n: T, signed: bool) -> T {
         t = tmp;
     }
 
-    if r > T::from_literal(1) {
+    if r > T::from_literal(1) && x != T::default() {
         panic!("{:x?} is not invertible in ℤ/{:x?}", x, n);
     }
     println!("{:?}", t);
@@ -349,7 +348,7 @@ fn extended_euclid_invert<T: TRestrictions<T>>(x: T, n: T, signed: bool) -> T {
 }
 
 /// Extended euclidean algorithm to compute the inverse of x in yℤ[x]
-fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
+fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Result<Vec<T>, &'static str> {
     let (x, y) = normalize!(x, y);
 
     let mut new_t = vec![T::default(); x.len()];
@@ -372,7 +371,11 @@ fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
         t = tmp;
     }
 
-    poly_mul(&t, &poly_z_inv(&r, n), n)
+    if leading_coefficient(&r).0 > 0 {
+        return Err("Could not invert the polynomial");
+    }
+
+    Ok(poly_mul(&t, &poly_z_inv(&r, n), n))
 }
 
 /// The poly struct.
@@ -534,7 +537,7 @@ impl<T: TRestrictions<T>> Poly<T> {
     /// Invert this polynomial.
     pub fn inv(&self) -> Self {
         Self {
-            poly: extended_euclid(&self.poly, &self.irr, self.n),
+            poly: extended_euclid(&self.poly, &self.irr, self.n).unwrap(),
             irr: self.irr.clone(),
             n: self.n,
         }
