@@ -287,6 +287,13 @@ impl<T: Copy> IndexMut<usize> for Seq<T> {
     }
 }
 
+impl<T: Copy> Index<Range<usize>> for Seq<T> {
+    type Output = [T];
+    fn index(&self, r: Range<usize>) -> &[T] {
+        &self.b[r]
+    }
+}
+
 impl<T: Copy> From<Vec<T>> for Seq<T> {
     fn from(x: Vec<T>) -> Seq<T> {
         Self {
