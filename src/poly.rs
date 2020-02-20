@@ -27,6 +27,8 @@ pub trait Integer<T> {
     fn sub_mod(self, rhs: T, n: T) -> T;
     /// `(self + rhs) % n`
     fn add_mod(self, rhs: T, n: T) -> T;
+    /// `self % n`
+    fn rem(self, n: T) -> T;
     fn abs(self) -> T;
 }
 
@@ -61,6 +63,9 @@ impl Integer<u128> for u128 {
         } else {
             self + rhs
         }
+    }
+    fn rem(self, n: u128) -> u128 {
+        self % n
     }
     fn max() -> u128 {
         u128::max_value()
@@ -97,6 +102,9 @@ impl Integer<i128> for i128 {
         } else {
             self + rhs
         }
+    }
+    fn rem(self, n: i128) -> i128 {
+        self % n
     }
     fn max() -> i128 {
         i128::max_value()
@@ -216,11 +224,12 @@ fn poly_add<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
 
 /// Polynomial multiplication using operand scanning.
 /// This is very inefficient and prone to side-channel attacks.
-fn poly_mul_op_scanning<T: TRestrictions<T>>(x: &[T], y: &[T]) -> Vec<T> {
+fn poly_mul_op_scanning<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let mut out = vec![T::default(); x.len() + y.len()];
     for i in 0..x.len() {
         for j in 0..y.len() {
-            out[i + j] = out[i + j] + (x[i] * y[j]);
+            // TODO: this can overflow. We could reduce earlier.
+            out[i + j] = (out[i + j] + (x[i] * y[j])).rem(n);
         }
     }
     out
@@ -229,7 +238,7 @@ fn poly_mul_op_scanning<T: TRestrictions<T>>(x: &[T], y: &[T]) -> Vec<T> {
 /// Polynomial multiplication using sparse multiplication.
 /// This is more efficient than operand scanning but also prone to side-channel
 /// attacks. We still have coefficients in ℤn so we still need to multiply
-fn poly_mul<T: TRestrictions<T>>(x: &[T], y: &[T]) -> Vec<T> {
+fn poly_mul<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let mut out = vec![T::default(); x.len() + y.len()];
     for adx in x
         .iter()
@@ -243,7 +252,8 @@ fn poly_mul<T: TRestrictions<T>>(x: &[T], y: &[T]) -> Vec<T> {
             .map(|(i, x)| (i, x))
             .filter(|(_, &x)| x != T::default())
         {
-            out[adx.0 + bdx.0] = out[adx.0 + bdx.0] + (*adx.1 * *bdx.1);
+            // TODO: this can overflow. We could reduce earlier.
+            out[adx.0 + bdx.0] = (out[adx.0 + bdx.0] + (*adx.1 * *bdx.1)).rem(n);
         }
     }
     out
@@ -277,7 +287,7 @@ fn euclid_div<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> (Vec<T>, Vec<T>) {
 
         let s = monomial(c_idx, idx);
         q = poly_add(&q[..], &s[..], n);
-        let sy = poly_mul(&s[..], &y[..]);
+        let sy = poly_mul(&s[..], &y[..], n);
         r = poly_sub(&r, &sy, n);
 
         let tmp = leading_coefficient(&r);
@@ -354,15 +364,15 @@ fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
         let q = euclid_div(&r, &new_r, n).0;
 
         let tmp = new_r.clone();
-        new_r = poly_sub(&r, &poly_mul(&q, &new_r), n);
+        new_r = poly_sub(&r, &poly_mul(&q, &new_r, n), n);
         r = tmp;
 
         let tmp = new_t.clone();
-        new_t = poly_sub(&t, &poly_mul(&q, &new_t), n);
+        new_t = poly_sub(&t, &poly_mul(&q, &new_t, n), n);
         t = tmp;
     }
 
-    poly_mul(&t, &poly_z_inv(&r, n))
+    poly_mul(&t, &poly_z_inv(&r, n), n)
 }
 
 /// The poly struct.
@@ -465,7 +475,7 @@ impl<T: TRestrictions<T>> Poly<T> {
     /// in `T` that don't fit in `i128` use generators on `T`.
     pub fn random(irr_in: &[T], r: std::ops::Range<i128>, n_in: T) -> Self {
         Self {
-            poly: random_poly(irr_in.len() - 1, r.start, r.end + 1),
+            poly: random_poly(irr_in.len() - 1, r.start, r.end),
             irr: irr_in.to_vec(),
             n: n_in,
         }
@@ -503,6 +513,7 @@ impl<T: TRestrictions<T>> Poly<T> {
         }
     }
 
+    // TODO: don't borrow
     /// Euclidean division returning (q, r)
     pub fn euclid_div(&self, rhs: &Poly<T>) -> (Poly<T>, Poly<T>) {
         let (q, r) = euclid_div(&self.poly, &rhs.poly, self.n);
@@ -636,8 +647,10 @@ impl<T: TRestrictions<T>> std::ops::Mul for Poly<T> {
     fn mul(self, rhs: Self) -> Self::Output {
         debug_assert!(self.n == rhs.n);
         debug_assert!(self.irr == rhs.irr);
+        let tmp = poly_mul(&self.poly, &rhs.poly, self.n);
+        println!("mul result not reduced: {:?}", tmp);
         Self {
-            poly: poly_mul(&self.poly, &rhs.poly),
+            poly: tmp,
             irr: self.irr,
             n: self.n,
         }

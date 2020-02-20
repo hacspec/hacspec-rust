@@ -111,9 +111,13 @@ fn test_poly_euclid_div() {
         assert_eq!(r.truncate(), expected_r);
     }
 
-    // FIXME: implement inv so this works as well
-    // let (a, b, e) = poly!(u128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [2]);
-    // test_div(b, a, e, Poly::<u128>::new(&[2, 2, 0, 1], &[1, 1]));
+    let (a, b, e) = poly!(u128, [2, 2, 0, 1], [1, 0, 2], [0, 1, 1], [2], 3);
+    let remainder = Poly::<u128>::new_full(&[2, 2, 0, 1], &[1, 1], 3);
+    test_div(a, b, e, remainder);
+
+    let (a, b, e) = poly!(u128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [6], 11);
+    let remainder = Poly::<u128>::new_full(&[2, 2, 0, 1], &[5, 1], 11);
+    test_div(a, b, e, remainder);
 }
 
 #[test]
@@ -124,15 +128,19 @@ fn test_poly_mul() {
         assert_eq!(c, expected);
     }
 
-    // let irr = random_poly::<u128>(2048, 0, 4);
-    // let a = Poly::<u128>::random(&irr, 0..3, 3);
-    // let b = Poly::<u128>::random(&irr, 0..3, 3);
-    // let r = a.clone() * b.clone();
-    // println!("{:x?} * {:x?} = {:x?}", a, b, r);
+    let (a, b, e) = poly!(u128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [7, 4, 8], 11);
+    test_mul(a, b, e);
+    let (a, b, e) = poly!(i128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [7, 4, 8], 11);
+    test_mul(a, b, e);
+    let (a, b, e) = poly!(i128, [2, 2, 0, 1], [-3, 5, -1], [1, -2, -7], [8, 8, 7], 11);
+    test_mul(a, b, e);
 
-    // FIXME: implement inv so this works as well
-    // let (a, b, e) = poly!(u128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [2, 2]);
-    // test_mul(a, b, e);
+    // Use random values, so no expected value possible here.
+    let irr = random_poly::<u128>(2048, 0, 3);
+    let a = Poly::<u128>::random(&irr, 0..3, 3);
+    let b = Poly::<u128>::random(&irr, 0..3, 3);
+    let r = a.clone() * b.clone();
+    println!("{:x?} * {:x?} = {:x?}", a, b, r);
 }
 
 // #[test]
