@@ -12,3 +12,18 @@ fn test_byte_sequences() {
         assert_eq!(((msg_u32[i] & 0xFF000000) >> 24) as u8, U8::declassify(chunk[0]));
     }
 }
+
+#[test]
+fn test_seq_poly() {
+    let x = Seq::<u128>::from_array(&[5, 2, 7, 8, 9]);
+    let y = Seq::<u128>::from_array(&[2, 1, 0, 2, 4]);
+    let z = x.clone() + y.clone();
+    let z = z.clone() - x.clone();
+    assert_eq!(z[0..y.len()], y[0..y.len()]);
+    assert_eq!(z.iter().skip(y.len()).fold(0, |acc, x| acc+x), 0);
+    let z = x.clone() * y.clone();
+    let (zq, zr) = z.clone() / x.clone();
+    assert_eq!(zr.iter().fold(0, |acc, x| acc+x), 0);
+    assert_eq!(zq[0..y.len()], y[0..y.len()]);
+    assert_eq!(zq.iter().skip(y.len()).fold(0, |acc, x| acc+x), 0);
+}

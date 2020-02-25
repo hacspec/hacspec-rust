@@ -105,7 +105,7 @@ fn test_poly_euclid_div() {
         expected_c: Poly<T>,
         expected_r: Poly<T>,
     ) {
-        let (c, r) = x.euclid_div(&y);
+        let (c, r) = x.clone().euclid_div(y.clone());
         println!("{:x?} / {:x?} = {:x?}, {:x?}", x, y, c, r);
         assert_eq!(c.truncate(), expected_c);
         assert_eq!(r.truncate(), expected_r);
@@ -137,8 +137,8 @@ fn test_poly_mul() {
 
     // Use random values, so no expected value possible here.
     let irr = random_poly::<u128>(2048, 0, 3);
-    let a = Poly::<u128>::random(&irr, 0..3, 3);
-    let b = Poly::<u128>::random(&irr, 0..3, 3);
+    let a = Poly::<u128>::random(irr.clone(), 0..3, 3);
+    let b = Poly::<u128>::random(irr.clone(), 0..3, 3);
     let r = a.clone() * b.clone();
     println!("{:x?} * {:x?} = {:x?}", a, b, r);
 }
@@ -151,7 +151,7 @@ fn test_poly_inversion() {
     let c = Poly::<u128>::new_full(&irr, &[0, 0, 1], 3);
 
     fn test_poly_inversion(p: Poly<u128>, irr: &[u128]) {
-        let p_inv = p.inv();
+        let p_inv = p.clone().inv();
         println!(" > p: {:x?}", p.clone());
         println!(" > p_inv: {:x?}", p_inv.clone());
         let test = p * p_inv;
@@ -177,4 +177,41 @@ fn test_poly_inversion_panic() {
     let irr = [2, 2, 1, 2, 2, 1, 2, 0, 2, 0, 2, 2];
     let a = Poly::<u128>::new_full(&irr, &[0, 1, 2, 0, 2, 2, 0, 0, 2, 0, 0], 3);
     let a_inv = a.inv();
+}
+
+#[test]
+fn test_poly_ops() {
+    let irr = [2, 2, 0, 1];
+    let x = Poly::<u128>::new_full(&irr, &[2, 2, 1], 3);
+    let y = Poly::<u128>::new_full(&irr, &[1, 2, 0], 3);
+
+    let z = x.clone() + y.clone();
+    let z = z.clone() - x.clone();
+    assert_eq!(z.truncate(), y.truncate());
+
+    let z = x.clone() * y.clone();
+    println!("{:x?} * {:x?} = {:x?}", x.clone(), y.clone(), z.clone());
+    assert_eq!(z.truncate(), Poly::<u128>::new_full(&irr, &[1, 2, 2], 3));
+
+    let (zq, zr) = x.clone() / y.clone();
+    println!("{:x?} / {:x?} = {:x?}; {:x?}", x.clone(), y.clone(), zq.clone(), zr.clone());
+    assert_eq!(zr.truncate(), Poly::<u128>::new_full(&irr, &[2], 3));
+    assert_eq!(zq.truncate(), Poly::<u128>::new_full(&irr, &[0, 2], 3));
+}
+
+
+
+#[test]
+fn test_poly_ops_doc() {
+    let x = Poly::<u128>::from_array(&[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
+    let y = Poly::<u128>::from_array(&[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
+    let z = x.clone() * y.clone();
+    assert_eq!(z.truncate(), Poly::<u128>::from_array(&[10, 9, 5, 0, 6, 9, 0, 6, 3], 11));
+    let z = x.clone() + y.clone();
+    assert_eq!(z, Poly::<u128>::from_array(&[7, 3, 7, 10, 2], 11));
+    let z = x.clone() - y.clone();
+    assert_eq!(z, Poly::<u128>::from_array(&[3, 1, 7, 6, 5], 11));
+    let (q, r) = x.clone() / y.clone();
+    assert_eq!(q.truncate(), Poly::<u128>::from_array(&[5], 11));
+    assert_eq!(r.truncate(), Poly::<u128>::from_array(&[6, 8, 7, 9], 11));
 }

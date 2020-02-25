@@ -9,9 +9,9 @@ use crate::prelude::*;
 /// Variable length byte arrays.
 #[derive(Debug, Clone, Default)]
 pub struct Seq<T: Copy> {
-    b: Vec<T>,
+    pub(crate) b: Vec<T>,
     // Running index used when data is pushed into a Seq.
-    idx: usize,
+    pub(crate) idx: usize,
 }
 
 // TODO: Why ByteSeq with secret integers? Naming is odd
@@ -311,6 +311,25 @@ impl<T: Copy> From<&[T]> for Seq<T> {
         }
     }
 }
+
+// macro_rules! from_int_vec {
+//     ($t:ty) => {
+//         impl<T: Copy> From<Vec<$t>> for Seq<T> {
+//             fn from(x: Vec<$t>) -> Seq<T> {
+//                 Self {
+//                     b: x.iter().map(|&x| T::from(x)).collect::<Vec<T>>(),
+//                     idx: 0,
+//                 }
+//             }
+//         }
+//     };
+// }
+
+// from_int_vec!(u8);
+// from_int_vec!(u16);
+// from_int_vec!(u32);
+// from_int_vec!(u64);
+// from_int_vec!(u128);
 
 /// Read hex string to Bytes.
 impl From<&str> for Seq<U8> {
