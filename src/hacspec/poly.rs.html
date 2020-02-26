@@ -836,6 +836,7 @@
 <span id="836">836</span>
 <span id="837">837</span>
 <span id="838">838</span>
+<span id="839">839</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
 
@@ -908,8 +909,9 @@
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//! use hacspec::prelude::*;</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! let x = Poly::&lt;u128&gt;::from_array(&amp;[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴</span>
-<span class="doccomment">//! let y = Poly::&lt;u128&gt;::from_array(&amp;[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴</span>
+<span class="doccomment">//! let irr = [1, 3, 5, 0, 8, 6];</span>
+<span class="doccomment">//! let x = Poly::&lt;u128&gt;::new_full(&amp;irr, &amp;[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴</span>
+<span class="doccomment">//! let y = Poly::&lt;u128&gt;::new_full(&amp;irr, &amp;[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴</span>
 <span class="doccomment">//! let z = x.clone() * y.clone();</span>
 <span class="doccomment">//! let z = x.clone() + y.clone();</span>
 <span class="doccomment">//! let z = x.clone() - y.clone();</span>
