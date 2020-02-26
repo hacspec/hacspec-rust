@@ -476,12 +476,38 @@ fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Result<Vec<T>
 /// The poly struct.
 /// Note that while this is a polynomial over ℤn[x]/mℤ[x] it is not necessarily reduced
 /// by mℤ[x], i.e. poly might be larger. Call `reduce` to make sure poly is in ℤn/mℤ.
+///
+/// Use arithmetic operations on `Seq<T>` and `array!` to use non-quotient rings.
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Poly<T: TRestrictions<T>> {
     poly: Vec<T>,
     irr: Vec<T>,
     /// `n` is set to 0 if not specified and ignored.
     n: T,
+}
+
+#[macro_export]
+macro_rules! poly_n {
+    ($name:ident, $t:ty, $n:expr) => {
+        struct $name {};
+        impl $name {
+            fn new(p: &[u128]) -> Poly<$t> {
+                Poly::from_array(p, $n)
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! poly_n_m {
+    ($name:ident, $t:ty, $n:expr, $m:expr) => {
+        struct $name {};
+        impl $name {
+            fn new(p: &[u128]) -> Poly<$t> {
+                Poly::new_full($m, p, $n)
+            }
+        }
+    };
 }
 
 // FIXME: clean-up!

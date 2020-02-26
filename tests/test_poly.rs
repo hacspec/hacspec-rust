@@ -238,3 +238,14 @@ fn test_poly_ops_doc() {
     assert_eq!(q.truncate(), Poly::<u128>::new_full(&irr, &[5], 11));
     assert_eq!(r.truncate(), Poly::<u128>::new_full(&irr, &[6, 8, 7, 9], 11));
 }
+
+#[test]
+fn test_poly_factory() {
+    poly_n!(R3, u128, 3);
+    let x = R3::new(&[1, 2, 0, 1]);
+    println!("x: {:?}", x);
+
+    poly_n_m!(R3q, u128, 3, &[1, 2, 0, 1]);
+    let x = R3q::new(&[1, 2, 0, 1]);
+    println!("x: {:?}", x);
+}
