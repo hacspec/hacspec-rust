@@ -13,7 +13,6 @@ macro_rules! poly {
     }};
 }
 
-
 #[test]
 fn test_zn_inv() {
     let n = 65537;
@@ -194,19 +193,26 @@ fn test_poly_ops() {
     assert_eq!(z.truncate(), Poly::<u128>::new_full(&irr, &[1, 2, 2], 3));
 
     let (zq, zr) = x.clone() / y.clone();
-    println!("{:x?} / {:x?} = {:x?}; {:x?}", x.clone(), y.clone(), zq.clone(), zr.clone());
+    println!(
+        "{:x?} / {:x?} = {:x?}; {:x?}",
+        x.clone(),
+        y.clone(),
+        zq.clone(),
+        zr.clone()
+    );
     assert_eq!(zr.truncate(), Poly::<u128>::new_full(&irr, &[2], 3));
     assert_eq!(zq.truncate(), Poly::<u128>::new_full(&irr, &[0, 2], 3));
 }
-
-
 
 #[test]
 fn test_poly_ops_doc() {
     let x = Poly::<u128>::from_array(&[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
     let y = Poly::<u128>::from_array(&[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
     let z = x.clone() * y.clone();
-    assert_eq!(z.truncate(), Poly::<u128>::from_array(&[10, 9, 5, 0, 6, 9, 0, 6, 3], 11));
+    assert_eq!(
+        z.truncate(),
+        Poly::<u128>::from_array(&[10, 9, 5, 0, 6, 9, 0, 6, 3], 11)
+    );
     let z = x.clone() + y.clone();
     assert_eq!(z, Poly::<u128>::from_array(&[7, 3, 7, 10, 2], 11));
     let z = x.clone() - y.clone();
@@ -214,4 +220,21 @@ fn test_poly_ops_doc() {
     let (q, r) = x.clone() / y.clone();
     assert_eq!(q.truncate(), Poly::<u128>::from_array(&[5], 11));
     assert_eq!(r.truncate(), Poly::<u128>::from_array(&[6, 8, 7, 9], 11));
+
+    // Now over ℤn/mℤ[x]
+    let irr = [1, 3, 5, 0, 8, 6];
+    let x = Poly::<u128>::new_full(&irr, &[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
+    let y = Poly::<u128>::new_full(&irr, &[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
+    let z = x.clone() * y.clone();
+    assert_eq!(
+        z.truncate(),
+        Poly::<u128>::new_full(&irr, &[7, 9, 2, 5, 10], 11)
+    );
+    let z = x.clone() + y.clone();
+    assert_eq!(z, Poly::<u128>::new_full(&irr, &[7, 3, 7, 10, 2], 11));
+    let z = x.clone() - y.clone();
+    assert_eq!(z, Poly::<u128>::new_full(&irr, &[3, 1, 7, 6, 5], 11));
+    let (q, r) = x.clone() / y.clone();
+    assert_eq!(q.truncate(), Poly::<u128>::new_full(&irr, &[5], 11));
+    assert_eq!(r.truncate(), Poly::<u128>::new_full(&irr, &[6, 8, 7, 9], 11));
 }

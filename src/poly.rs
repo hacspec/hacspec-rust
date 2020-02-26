@@ -69,8 +69,9 @@
 //! ```
 //! use hacspec::prelude::*;
 //!
-//! let x = Poly::<u128>::from_array(&[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
-//! let y = Poly::<u128>::from_array(&[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
+//! let irr = [1, 3, 5, 0, 8, 6];
+//! let x = Poly::<u128>::new_full(&irr, &[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
+//! let y = Poly::<u128>::new_full(&irr, &[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
 //! let z = x.clone() * y.clone();
 //! let z = x.clone() + y.clone();
 //! let z = x.clone() - y.clone();
