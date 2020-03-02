@@ -249,3 +249,6 @@ fn test_poly_factory() {
     let x = R3q::new(&[1, 2, 0, 1]);
     println!("x: {:?}", x);
 }
+
+poly_n!(DummyPolyN, u128, 3);
+poly_n_m!(DummyPolyNM, u128, 3, &[1, 2, 0, 1]);
