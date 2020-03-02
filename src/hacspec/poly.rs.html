@@ -863,6 +863,39 @@
 <span id="863">863</span>
 <span id="864">864</span>
 <span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
 
@@ -1354,11 +1387,11 @@
 
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">poly_n</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>: <span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {
         <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>;
         <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
-            <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">p</span>: <span class="kw-2">&amp;</span>[<span class="ident">u128</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poly</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span> {
-                <span class="ident">Poly</span>::<span class="ident">from_array</span>(<span class="ident">p</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>)
+            <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">p</span>: <span class="kw-2">&amp;</span>[(<span class="ident">usize</span>, <span class="ident">u128</span>)]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poly</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span> {
+                <span class="ident">Poly</span>::<span class="ident">sparse</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>, <span class="ident">p</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>)
             }
         }
     };
@@ -1366,11 +1399,15 @@
 
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">poly_n_m</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">m</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">m</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {
         <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>;
         <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
-            <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">p</span>: <span class="kw-2">&amp;</span>[<span class="ident">u128</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poly</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span> {
-                <span class="ident">Poly</span>::<span class="ident">new_full</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">m</span>, <span class="ident">p</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>)
+            <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">p</span>: <span class="kw-2">&amp;</span>[(<span class="ident">usize</span>, <span class="ident">u128</span>)]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poly</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span> {
+                <span class="ident">Poly</span>::<span class="ident">sparse_full</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>, <span class="ident">p</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">m</span>)
+            }
+            <span class="kw">fn</span> <span class="ident">random</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poly</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span><span class="op">&gt;</span> {
+                <span class="comment">// TODO: this can panic; also not sure if it&#39;s exactly what we want.</span>
+                <span class="ident">Poly</span>::<span class="ident">sparse_random</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">l</span>, <span class="number">0</span>..<span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">n</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">m</span>)
             }
         }
     };
@@ -1378,6 +1415,35 @@
 
 <span class="comment">// FIXME: clean-up!</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">TRestrictions</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">Poly</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sparse</span>(<span class="ident">l</span>: <span class="ident">usize</span>, <span class="ident">p</span>: <span class="kw-2">&amp;</span>[(<span class="ident">usize</span>, <span class="ident">u128</span>)], <span class="ident">n</span>: <span class="ident">u128</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span>::<span class="ident">sparse_full</span>(<span class="ident">l</span>, <span class="ident">p</span>, <span class="ident">n</span>, <span class="kw-2">&amp;</span>[])
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sparse_full</span>(<span class="ident">l</span>: <span class="ident">usize</span>, <span class="ident">p</span>: <span class="kw-2">&amp;</span>[(<span class="ident">usize</span>, <span class="ident">u128</span>)], <span class="ident">n</span>: <span class="ident">u128</span>, <span class="ident">irr_in</span>: <span class="kw-2">&amp;</span>[(<span class="ident">usize</span>, <span class="ident">u128</span>)]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">poly</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">T</span>::<span class="ident">default</span>(); <span class="ident">l</span>];
+        <span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="ident">p</span>.<span class="ident">iter</span>() {
+            <span class="ident">poly</span>[<span class="ident">c</span>.<span class="number">0</span>] <span class="op">=</span> <span class="ident">T</span>::<span class="ident">from_literal</span>(<span class="ident">c</span>.<span class="number">1</span>);
+        }
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">irr</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">T</span>::<span class="ident">default</span>(); <span class="ident">l</span><span class="op">+</span><span class="number">1</span>];
+        <span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="ident">irr_in</span>.<span class="ident">iter</span>() {
+            <span class="ident">irr</span>[<span class="ident">c</span>.<span class="number">0</span>] <span class="op">=</span> <span class="ident">T</span>::<span class="ident">from_literal</span>(<span class="ident">c</span>.<span class="number">1</span>);
+        }
+        <span class="self">Self</span> {
+            <span class="ident">poly</span>: <span class="ident">poly</span>,
+            <span class="ident">irr</span>: <span class="ident">irr</span>,
+            <span class="ident">n</span>: <span class="ident">T</span>::<span class="ident">from_literal</span>(<span class="ident">n</span>),
+        }
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sparse_random</span>(<span class="ident">l</span>: <span class="ident">usize</span>, <span class="ident">r</span>: <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Range</span><span class="op">&lt;</span><span class="ident">i128</span><span class="op">&gt;</span>, <span class="ident">n</span>: <span class="ident">u128</span>, <span class="ident">irr_in</span>: <span class="kw-2">&amp;</span>[(<span class="ident">usize</span>, <span class="ident">u128</span>)]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">irr</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">T</span>::<span class="ident">default</span>(); <span class="ident">l</span><span class="op">+</span><span class="number">1</span>];
+        <span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="ident">irr_in</span>.<span class="ident">iter</span>() {
+            <span class="ident">irr</span>[<span class="ident">c</span>.<span class="number">0</span>] <span class="op">=</span> <span class="ident">T</span>::<span class="ident">from_literal</span>(<span class="ident">c</span>.<span class="number">1</span>);
+        }
+        <span class="self">Self</span> {
+            <span class="ident">poly</span>: <span class="ident">random_poly</span>(<span class="ident">l</span>, <span class="ident">r</span>.<span class="ident">start</span>, <span class="ident">r</span>.<span class="ident">end</span>).<span class="ident">b</span>,
+            <span class="ident">irr</span>: <span class="ident">irr</span>,
+            <span class="ident">n</span>: <span class="ident">T</span>::<span class="ident">from_literal</span>(<span class="ident">n</span>),
+        }
+    }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_array</span>(<span class="ident">p</span>: <span class="kw-2">&amp;</span>[<span class="ident">u128</span>], <span class="ident">n</span>: <span class="ident">u128</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">poly</span>: <span class="self">Self</span>::<span class="ident">u128_to_t</span>(<span class="ident">p</span>),
