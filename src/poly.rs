@@ -489,7 +489,7 @@ pub struct Poly<T: TRestrictions<T>> {
 #[macro_export]
 macro_rules! poly_n {
     ($name:ident, $t:ty, $n:expr) => {
-        struct $name {};
+        struct $name;
         impl $name {
             fn new(p: &[u128]) -> Poly<$t> {
                 Poly::from_array(p, $n)
@@ -501,7 +501,7 @@ macro_rules! poly_n {
 #[macro_export]
 macro_rules! poly_n_m {
     ($name:ident, $t:ty, $n:expr, $m:expr) => {
-        struct $name {};
+        struct $name;
         impl $name {
             fn new(p: &[u128]) -> Poly<$t> {
                 Poly::new_full($m, p, $n)
