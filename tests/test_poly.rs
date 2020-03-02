@@ -239,16 +239,24 @@ fn test_poly_ops_doc() {
     assert_eq!(r.truncate(), Poly::<u128>::new_full(&irr, &[6, 8, 7, 9], 11));
 }
 
+// Rq = Z[X]/(3329, (X^256+1))
+poly_n_m!(Rq_kyber, u128, 256, 3329, &[(0, 1), (256, 1)]);
+
 #[test]
 fn test_poly_factory() {
-    poly_n!(R3, u128, 3);
-    let x = R3::new(&[1, 2, 0, 1]);
+    poly_n!(R3, u128, 4, 3);
+    let x = R3::new(&[(0, 1), (1, 2), (3, 1)]);
     println!("x: {:?}", x);
 
-    poly_n_m!(R3q, u128, 3, &[1, 2, 0, 1]);
-    let x = R3q::new(&[1, 2, 0, 1]);
+    poly_n_m!(R3q, u128, 4, 3, &[(0, 1), (1, 2), (4, 1)]);
+    let x = R3q::new(&[(0, 1), (1, 2), (3, 1)]);
     println!("x: {:?}", x);
+
+    let a = Rq_kyber::random();
+    let b = Rq_kyber::new(&[(5, 234), (122, 3000)]);
+    let c = a.clone() * b.clone();
+    println!("c: {:?}", c);
 }
 
-poly_n!(DummyPolyN, u128, 3);
-poly_n_m!(DummyPolyNM, u128, 3, &[1, 2, 0, 1]);
+poly_n!(DummyPolyN, u128, 4, 3);
+poly_n_m!(DummyPolyNM, u128, 4, 3, &[(0, 1), (1, 2), (4, 1)]);

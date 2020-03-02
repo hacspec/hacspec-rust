@@ -488,11 +488,11 @@ pub struct Poly<T: TRestrictions<T>> {
 
 #[macro_export]
 macro_rules! poly_n {
-    ($name:ident, $t:ty, $n:expr) => {
+    ($name:ident, $t:ty, $l: expr, $n:expr) => {
         struct $name;
         impl $name {
-            fn new(p: &[u128]) -> Poly<$t> {
-                Poly::from_array(p, $n)
+            fn new(p: &[(usize, u128)]) -> Poly<$t> {
+                Poly::sparse($l, p, $n)
             }
         }
     };
@@ -500,11 +500,15 @@ macro_rules! poly_n {
 
 #[macro_export]
 macro_rules! poly_n_m {
-    ($name:ident, $t:ty, $n:expr, $m:expr) => {
+    ($name:ident, $t:ty, $l:expr, $n:expr, $m:expr) => {
         struct $name;
         impl $name {
-            fn new(p: &[u128]) -> Poly<$t> {
-                Poly::new_full($m, p, $n)
+            fn new(p: &[(usize, u128)]) -> Poly<$t> {
+                Poly::sparse_full($l, p, $n, $m)
+            }
+            fn random() -> Poly<$t> {
+                // TODO: this can panic; also not sure if it's exactly what we want.
+                Poly::sparse_random($l, 0..$n, $n, $m)
             }
         }
     };
@@ -512,6 +516,35 @@ macro_rules! poly_n_m {
 
 // FIXME: clean-up!
 impl<T: TRestrictions<T>> Poly<T> {
+    pub fn sparse(l: usize, p: &[(usize, u128)], n: u128) -> Self {
+        Self::sparse_full(l, p, n, &[])
+    }
+    pub fn sparse_full(l: usize, p: &[(usize, u128)], n: u128, irr_in: &[(usize, u128)]) -> Self {
+        let mut poly = vec![T::default(); l];
+        for c in p.iter() {
+            poly[c.0] = T::from_literal(c.1);
+        }
+        let mut irr = vec![T::default(); l+1];
+        for c in irr_in.iter() {
+            irr[c.0] = T::from_literal(c.1);
+        }
+        Self {
+            poly: poly,
+            irr: irr,
+            n: T::from_literal(n),
+        }
+    }
+    pub fn sparse_random(l: usize, r: std::ops::Range<i128>, n: u128, irr_in: &[(usize, u128)]) -> Self {
+        let mut irr = vec![T::default(); l+1];
+        for c in irr_in.iter() {
+            irr[c.0] = T::from_literal(c.1);
+        }
+        Self {
+            poly: random_poly(l, r.start, r.end).b,
+            irr: irr,
+            n: T::from_literal(n),
+        }
+    }
     pub fn from_array(p: &[u128], n: u128) -> Self {
         Self {
             poly: Self::u128_to_t(p),
