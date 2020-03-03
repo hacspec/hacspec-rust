@@ -16,8 +16,7 @@
 //! * Quotient ring over ℤn/mℤ
 //!
 //! # Polynomial rings over ℤ
-//! This most basic form is implemented over basic sequences `Seq<T>` and arrays
-//! `array!(...)`.
+//! This most basic form is implemented over basic sequences `Seq<T>`.
 //! Addition, Subtraction, Multiplication, and Division with remainder are supported.
 //!
 //! **Note:** This is currently only implemented for `Seq<u128>` and `Seq<i128>`.
@@ -79,162 +78,17 @@
 //! ```
 //!
 
-use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Sub};
+use rand::Rng;
 
 use crate::seq::*;
-
-/// Trait that needs to be implemented by all integers that are used as coefficients.
-/// This is done here for ℤn over `i128` and `u128`.
-pub trait Integer<T> {
-    fn from_literal(x: u128) -> T;
-    fn from_signed_literal(x: i128) -> T;
-    fn inv(x: T, n: T) -> T;
-    fn max() -> T;
-    /// Lift the possibly negative result back up mod n.
-    fn sub_lift(self, rhs: T, n: T) -> T;
-    /// Compute (self - rhs) % n.
-    fn sub_mod(self, rhs: T, n: T) -> T;
-    /// `(self + rhs) % n`
-    fn add_mod(self, rhs: T, n: T) -> T;
-    /// `(self * rhs) % n`
-    fn mul_mod(self, rhs: T, n: T) -> T;
-    /// `self % n`
-    fn rem(self, n: T) -> T;
-    fn abs(self) -> T;
-}
-
-impl Integer<u128> for u128 {
-    fn from_literal(x: u128) -> u128 {
-        x
-    }
-    fn from_signed_literal(x: i128) -> u128 {
-        x as u128
-    }
-    /// **Panics**
-    fn inv(x: u128, n: u128) -> u128 {
-        extended_euclid_invert(x, n, false)
-    }
-    fn sub_lift(self, rhs: u128, n: u128) -> u128 {
-        self.sub_mod(rhs, n)
-    }
-    fn sub_mod(self, rhs: u128, n: u128) -> u128 {
-        if n == 0 {
-            return self - rhs;
-        }
-
-        let mut lhs = self;
-        while lhs < rhs {
-            lhs += n;
-        }
-        lhs - rhs
-    }
-    fn add_mod(self, rhs: u128, n: u128) -> u128 {
-        if n != 0 {
-            (self + rhs) % n
-        } else {
-            self + rhs
-        }
-    }
-    fn mul_mod(self, rhs: u128, n: u128) -> u128 {
-        if n == 0 {
-            self * rhs
-        } else {
-            (self * rhs) % n
-        }
-    }
-    fn rem(self, n: u128) -> u128 {
-        self % n
-    }
-    fn max() -> u128 {
-        u128::max_value()
-    }
-    fn abs(self) -> u128 {
-        self
-    }
-}
-
-impl Integer<i128> for i128 {
-    /// **Warning** might be lossy
-    fn from_literal(x: u128) -> i128 {
-        x as i128
-    }
-    fn from_signed_literal(x: i128) -> i128 {
-        x
-    }
-    fn inv(x: i128, n: i128) -> i128 {
-        extended_euclid_invert(x.abs(), n.abs(), true)
-    }
-    fn sub_lift(self, rhs: i128, n: i128) -> i128 {
-        self - rhs
-    }
-    fn sub_mod(self, rhs: i128, n: i128) -> i128 {
-        if n != 0 {
-            signed_mod(self - rhs, n)
-        } else {
-            self - rhs
-        }
-    }
-    fn add_mod(self, rhs: i128, n: i128) -> i128 {
-        if n != 0 {
-            signed_mod(self + rhs, n)
-        } else {
-            self + rhs
-        }
-    }
-    fn mul_mod(self, rhs: i128, n: i128) -> i128 {
-        if n == 0 {
-            self * rhs
-        } else {
-            (self * rhs) % n
-        }
-    }
-    fn rem(self, n: i128) -> i128 {
-        self % n
-    }
-    fn max() -> i128 {
-        i128::max_value()
-    }
-    fn abs(self) -> i128 {
-        self.abs()
-    }
-}
-
-/// Traits that have to be implemented by the type used for coefficients.
-pub trait TRestrictions<T>:
-    Default
-    + Integer<T>
-    + Copy
-    + Clone
-    + PartialEq
-    + PartialOrd
-    + Div<T, Output = T>
-    + Add<T, Output = T>
-    + Sub<T, Output = T>
-    + Mul<T, Output = T>
-    + Debug
-{
-}
-impl<T> TRestrictions<T> for T where
-    T: Default
-        + Integer<T>
-        + Copy
-        + Clone
-        + PartialEq
-        + PartialOrd
-        + Div<T, Output = T>
-        + Add<T, Output = T>
-        + Sub<T, Output = T>
-        + Mul<T, Output = T>
-        + Debug
-{
-}
+use crate::integer::*;
 
 ///! First we implement all functions on slices of T.
 ///! Note that this is equivalent to ℤn[x] (or ℤ[x] depending, depending on T).
 
 /// Rust's built-in modulo (x % n) is signed. This lifts x into ℤn+.
-fn signed_mod(x: i128, n: i128) -> i128 {
+pub(crate) fn signed_mod(x: i128, n: i128) -> i128 {
     let mut ret = x % n;
     while ret < 0 {
         ret += n;
@@ -276,7 +130,7 @@ macro_rules! normalize {
     }};
 }
 
-fn leading_coefficient<T: TRestrictions<T>>(x: &[T]) -> (usize, T) {
+pub fn leading_coefficient<T: TRestrictions<T>>(x: &[T]) -> (usize, T) {
     let zero = T::default();
     let mut degree: usize = 0;
     let mut coefficient = T::default();
@@ -288,7 +142,7 @@ fn leading_coefficient<T: TRestrictions<T>>(x: &[T]) -> (usize, T) {
     }
     (degree, coefficient)
 }
-fn poly_sub<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
+pub fn poly_sub<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let (x, y) = normalize!(x, y);
     debug_assert!(x.len() == y.len());
     let mut out = vec![T::default(); x.len()];
@@ -298,12 +152,23 @@ fn poly_sub<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     out
 }
 
-fn poly_add<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
+pub fn poly_add<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let (x, y) = normalize!(x, y);
     debug_assert!(x.len() == y.len());
     let mut out = vec![T::default(); x.len()];
     for (a, (&b, &c)) in out.iter_mut().zip(x.iter().zip(y.iter())) {
         *a = b.add_mod(c, n);
+    }
+    out
+}
+
+/// Polynomial multiplication using operand scanning without modulo.
+pub(crate) fn poly_mul_plain<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
+    let mut out = vec![T::default(); x.len() + y.len()];
+    for i in 0..x.len() {
+        for j in 0..y.len() {
+            out[i + j] = out[i + j] + x[i] * y[j];
+        }
     }
     out
 }
@@ -321,9 +186,9 @@ pub(crate) fn poly_mul_op_scanning<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) 
 }
 
 /// Polynomial multiplication using sparse multiplication.
-/// This is more efficient than operand scanning but also prone to side-channel
-/// attacks. We still have coefficients in ℤn so we still need to multiply
-pub(crate) fn poly_mul<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
+/// This can be more efficient than operand scanning but also prone to side-channel
+/// attacks.
+pub fn poly_mul<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let mut out = vec![T::default(); x.len() + y.len()];
     for adx in x
         .iter()
@@ -343,7 +208,6 @@ pub(crate) fn poly_mul<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     out
 }
 
-use rand::Rng;
 pub fn random_poly<T: TRestrictions<T>>(l: usize, min: i128, max: i128) -> Seq<T> {
     let mut rng = rand::thread_rng();
     (0..l)
@@ -358,7 +222,7 @@ pub fn random_poly<T: TRestrictions<T>>(l: usize, min: i128, max: i128) -> Seq<T
 ///
 /// **Panics** when division isn't possible.
 ///
-fn euclid_div<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> (Vec<T>, Vec<T>) {
+pub fn euclid_div<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> (Vec<T>, Vec<T>) {
     let (x, y) = normalize!(x, y);
     let mut q = vec![T::default(); x.len()];
     let mut r = x.clone();
@@ -409,7 +273,7 @@ fn poly_z_inv<T: TRestrictions<T>>(v: &[T], n: T) -> Vec<T> {
 ///
 /// **Panics** if x is not invertible.
 ///
-fn extended_euclid_invert<T: TRestrictions<T>>(x: T, n: T, signed: bool) -> T {
+pub(crate) fn extended_euclid_invert<T: TRestrictions<T>>(x: T, n: T, signed: bool) -> T {
     let mut t = T::default();
     let mut r = n;
     let mut new_t = T::from_literal(1);
@@ -477,7 +341,7 @@ fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Result<Vec<T>
 /// Note that while this is a polynomial over ℤn[x]/mℤ[x] it is not necessarily reduced
 /// by mℤ[x], i.e. poly might be larger. Call `reduce` to make sure poly is in ℤn/mℤ.
 ///
-/// Use arithmetic operations on `Seq<T>` and `array!` to use non-quotient rings.
+/// Use arithmetic operations on `Seq<T>` to use non-quotient rings.
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Poly<T: TRestrictions<T>> {
     poly: Vec<T>,
@@ -509,6 +373,179 @@ macro_rules! poly_n_m {
             fn random() -> Poly<$t> {
                 // TODO: this can panic; also not sure if it's exactly what we want.
                 Poly::sparse_random($l, 0..$n, $n, $m)
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! poly {
+    ($name:ident, $t:ty, $l:expr, $n:expr, $m:expr) => {
+        /// The poly struct for fixed-length polynomials.
+        /// Every polynomial is over ℤn[x]/mℤ[x] and reduced by mℤ[x].
+        #[derive(Clone, Copy)]
+        struct $name {
+            poly: [$t; $l],
+            irr: [$t; $l+1],
+            n: $t,
+        }
+        impl $name {
+            /// Get a new sparse polynomial.
+            /// For other polynomials use `new_full`.
+            fn new(p: &[(usize, $t)]) -> $name {
+                let mut poly = [<$t>::default(); $l];
+                for c in p.iter() {
+                    poly[c.0] = c.1;
+                }
+                let mut irr = [<$t>::default(); $l+1];
+                for c in $m.iter() {
+                    irr[c.0] = c.1;
+                }
+                Self {
+                    poly: poly,
+                    irr: irr,
+                    n: $n,
+                }
+            }
+            /// Get a new polynomial from a full array with coefficients.
+            fn new_full(p: [$t; $l]) -> $name {
+                let mut irr = [<$t>::default(); $l+1];
+                for c in $m.iter() {
+                    irr[c.0] = c.1;
+                }
+                Self {
+                    poly: p,
+                    irr: irr,
+                    n: $n,
+                }
+            }
+            /// Generate a random polynomial with coefficients between 0 and $n.
+            fn random() -> $name {
+                let mut irr = [<$t>::default(); $l+1];
+                for c in $m.iter() {
+                    irr[c.0] = c.1;
+                }
+                let mut rng = rand::thread_rng();
+                let p_vec: Vec<$t> = (0..$l)
+                    .map(|_| rng.gen_range(0, $n))
+                    .collect();
+                let mut p = [<$t>::default(); $l];
+                for (a, b) in p.iter_mut().zip(p_vec.iter()) {
+                    *a = *b;
+                }
+                Self {
+                    poly: p,
+                    irr: irr,
+                    n: $n,
+                }
+            }
+            /// Check if the two polynomials are defined over the same ring.
+            /// **Note** This shouldn't work on secret integers.
+            fn compatible(&self, other: &Self) -> bool {
+                if self.n != other.n {
+                    return false;
+                }
+                if self.irr.len() != other.irr.len() {
+                    return false;
+                }
+                if self.poly.len() != other.poly.len() {
+                    // This should be unreachable.
+                    return false;
+                }
+                for (a, b) in self.irr.iter().zip(other.irr.iter()) {
+                    if a != b {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        impl From<Vec<$t>> for $name {
+            fn from(v: Vec<$t>) -> $name {
+                let (d, _) = leading_coefficient(&v);
+                debug_assert!(d <= $l);
+                if d > $l {
+                    panic!("The vector is too long to fit this polynomial.");
+                }
+                let mut p = [<$t>::default(); $l];
+                for (a, b) in p.iter_mut().zip(v.iter()) {
+                    *a = *b;
+                }
+                let mut irr = [<$t>::default(); $l+1];
+                for c in $m.iter() {
+                    irr[c.0] = c.1;
+                }
+                $name {
+                    poly: p,
+                    irr: irr,
+                    n: $n
+                }
+            }
+        }
+
+        impl fmt::Debug for $name {
+            // TODO: print irr and n as well
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.poly
+                    .iter()
+                    .collect::<Vec<_>>()
+                    .fmt(f)
+            }
+        }
+
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                if !self.compatible(other) {
+                    return false;
+                }
+                for (a, b) in self.irr.iter().zip(other.irr.iter()) {
+                    if a != b {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        /// Polynomial subtraction
+        impl Sub for $name {
+            type Output = Self;
+            fn sub(self, rhs: Self) -> Self::Output {
+                debug_assert!(self.compatible(&rhs));
+                let r = poly_sub(&self.poly, &rhs.poly, self.n);
+                Self::from(r)
+            }
+        }
+
+        /// Polynomial addition
+        impl Add for $name {
+            type Output = Self;
+            fn add(self, rhs: Self) -> Self::Output {
+                debug_assert!(self.compatible(&rhs));
+                let r = poly_add(&self.poly, &rhs.poly, self.n);
+                Self::from(r)
+            }
+        }
+
+        /// Polynomial multiplication on ℤn[x]/mℤ[x]
+        impl Mul for $name {
+            type Output = Self;
+            fn mul(self, rhs: Self) -> Self::Output {
+                debug_assert!(self.compatible(&rhs));
+                let tmp = poly_mul(&self.poly, &rhs.poly, self.n);
+                let r = euclid_div(&tmp, &self.irr, self.n).1;
+                Self::from(r)
+            }
+        }
+
+        /// Polynomial division on ℤn[x]/mℤ[x]
+        impl Div for $name {
+            type Output = (Self, Self);
+            fn div(self, rhs: Self) -> Self::Output {
+                debug_assert!(self.compatible(&rhs));
+                let r = euclid_div(&self.poly, &rhs.poly, self.n);
+                (Self::from(r.0), Self::from(r.1))
             }
         }
     };
