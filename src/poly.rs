@@ -21,62 +21,6 @@
 //!
 //! **Note:** This is currently only implemented for `Seq<u128>` and `Seq<i128>`.
 //!
-//! ## Examples
-//!
-//! ```
-//! use hacspec::prelude::*;
-//!
-//! let x = Seq::<u128>::from_array(&[5, 2, 7, 8, 9]); // 5 + 2x + 7x² + 8x³ + 9x⁴
-//! let y = Seq::<u128>::from_array(&[2, 1, 0, 2, 4]); // 2 + 1x       + 2x³ + 4x⁴
-//! let z = x.clone() * y.clone();
-//! let z = x.clone() + y.clone();
-//! let z = x.clone() - y.clone();
-//! // You can not divide polynomials over ℤ. This will panic.
-//! // let (q, r) = x.clone() / y.clone();
-//! ```
-//!
-//! # Quotient ring over ℤn
-//! Quotient ring arithmetic is implemented on a separate type `Poly<T>`, which
-//! behaves similar to sequences but can store the modulus `n` as well.
-//! Addition, Subtraction, Multiplication, and Division with remainder are supported.
-//!
-//! **Note:** This is currently only implemented for `Poly<u128>` and `Poly<i128>`.
-//!
-//! ## Examples
-//!
-//! ```
-//! use hacspec::prelude::*;
-//!
-//! let x = Poly::<u128>::from_array(&[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
-//! let y = Poly::<u128>::from_array(&[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
-//! let z = x.clone() * y.clone();
-//! let z = x.clone() + y.clone();
-//! let z = x.clone() - y.clone();
-//! let (q, r) = x.clone() / y.clone();
-//! ```
-//!
-//! # Quotient ring over ℤn/mℤ[x]
-//! Quotient ring arithmetic is implemented on a separate type `Poly<T>`, which
-//! behaves similar to sequences but can store the modulus `n` and irreducible
-//! polynomial `irr` as well.
-//! Addition, Subtraction, Multiplication, and Division with remainder are supported.
-//!
-//! **Note:** This is currently only implemented for `Poly<u128>` and `Poly<i128>`.
-//!
-//! ## Examples
-//!
-//! ```
-//! use hacspec::prelude::*;
-//!
-//! let irr = [1, 3, 5, 0, 8, 6];
-//! let x = Poly::<u128>::new_full(&irr, &[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
-//! let y = Poly::<u128>::new_full(&irr, &[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
-//! let z = x.clone() * y.clone();
-//! let z = x.clone() + y.clone();
-//! let z = x.clone() - y.clone();
-//! let (q, r) = x.clone() / y.clone();
-//! ```
-//!
 
 use std::ops::{Add, Div, Mul, Sub};
 use rand::Rng;
@@ -123,13 +67,20 @@ where
     p
 }
 
-macro_rules! normalize {
-    ($x:expr, $y:expr) => {{
-        let max_len = std::cmp::max($x.len(), $y.len());
-        (pad($x, max_len), pad($y, max_len))
-    }};
+// macro_rules! normalize {
+//     ($x:expr, $y:expr) => {{
+//         let max_len = std::cmp::max($x.len(), $y.len());
+//         (pad($x, max_len), pad($y, max_len))
+//     }};
+// }
+
+#[inline]
+fn normalize<T: TRestrictions<T>>(x: &[T], y: &[T]) -> (Vec<T>, Vec<T>) {
+    let max_len = std::cmp::max(x.len(), y.len());
+    (pad(x, max_len), pad(y, max_len))
 }
 
+#[inline]
 pub fn leading_coefficient<T: TRestrictions<T>>(x: &[T]) -> (usize, T) {
     let zero = T::default();
     let mut degree: usize = 0;
@@ -142,8 +93,10 @@ pub fn leading_coefficient<T: TRestrictions<T>>(x: &[T]) -> (usize, T) {
     }
     (degree, coefficient)
 }
+
+#[inline]
 pub fn poly_sub<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
-    let (x, y) = normalize!(x, y);
+    let (x, y) = normalize(x, y);
     debug_assert!(x.len() == y.len());
     let mut out = vec![T::default(); x.len()];
     for (a, (&b, &c)) in out.iter_mut().zip(x.iter().zip(y.iter())) {
@@ -152,8 +105,9 @@ pub fn poly_sub<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     out
 }
 
+#[inline]
 pub fn poly_add<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
-    let (x, y) = normalize!(x, y);
+    let (x, y) = normalize(x, y);
     debug_assert!(x.len() == y.len());
     let mut out = vec![T::default(); x.len()];
     for (a, (&b, &c)) in out.iter_mut().zip(x.iter().zip(y.iter())) {
@@ -163,6 +117,7 @@ pub fn poly_add<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
 }
 
 /// Polynomial multiplication using operand scanning without modulo.
+#[inline]
 pub(crate) fn poly_mul_plain<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let mut out = vec![T::default(); x.len() + y.len()];
     for i in 0..x.len() {
@@ -175,6 +130,7 @@ pub(crate) fn poly_mul_plain<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec
 
 /// Polynomial multiplication using operand scanning.
 /// This is very inefficient and prone to side-channel attacks.
+#[inline]
 pub(crate) fn poly_mul_op_scanning<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let mut out = vec![T::default(); x.len() + y.len()];
     for i in 0..x.len() {
@@ -188,6 +144,7 @@ pub(crate) fn poly_mul_op_scanning<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) 
 /// Polynomial multiplication using sparse multiplication.
 /// This can be more efficient than operand scanning but also prone to side-channel
 /// attacks.
+#[inline]
 pub fn poly_mul<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     let mut out = vec![T::default(); x.len() + y.len()];
     for adx in x
@@ -208,6 +165,7 @@ pub fn poly_mul<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Vec<T> {
     out
 }
 
+#[inline]
 pub fn random_poly<T: TRestrictions<T>>(l: usize, min: i128, max: i128) -> Seq<T> {
     let mut rng = rand::thread_rng();
     (0..l)
@@ -222,12 +180,15 @@ pub fn random_poly<T: TRestrictions<T>>(l: usize, min: i128, max: i128) -> Seq<T
 ///
 /// **Panics** when division isn't possible.
 ///
+#[inline]
 pub fn euclid_div<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> (Vec<T>, Vec<T>) {
-    let (x, y) = normalize!(x, y);
+    let (x, y) = normalize(x, y);
     let mut q = vec![T::default(); x.len()];
     let mut r = x.clone();
     let (d, c) = leading_coefficient(&y);
     let (mut r_d, mut r_c) = leading_coefficient(&r);
+
+    let mut i = 0;
 
     while r_d >= d && !is_zero(&r) {
         let idx = r_d - d;
@@ -256,6 +217,7 @@ pub fn euclid_div<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> (Vec<T>, Vec<T
     (q, r)
 }
 
+#[inline]
 fn is_zero<T: TRestrictions<T>>(v: &[T]) -> bool {
     for &x in v {
         if x != T::default() {
@@ -265,6 +227,7 @@ fn is_zero<T: TRestrictions<T>>(v: &[T]) -> bool {
     return true;
 }
 
+#[inline]
 fn poly_z_inv<T: TRestrictions<T>>(v: &[T], n: T) -> Vec<T> {
     v.iter().map(|&x| T::inv(x, n)).collect::<Vec<T>>()
 }
@@ -273,6 +236,7 @@ fn poly_z_inv<T: TRestrictions<T>>(v: &[T], n: T) -> Vec<T> {
 ///
 /// **Panics** if x is not invertible.
 ///
+#[inline]
 pub(crate) fn extended_euclid_invert<T: TRestrictions<T>>(x: T, n: T, signed: bool) -> T {
     let mut t = T::default();
     let mut r = n;
@@ -294,7 +258,7 @@ pub(crate) fn extended_euclid_invert<T: TRestrictions<T>>(x: T, n: T, signed: bo
     if r > T::from_literal(1) && x != T::default() {
         panic!("{:x?} is not invertible in ℤ/{:x?}", x, n);
     }
-    println!("{:?}", t);
+    println!("xeucl: {:?}", t);
     if t < T::default() {
         if signed {
             t = t.abs()
@@ -307,8 +271,10 @@ pub(crate) fn extended_euclid_invert<T: TRestrictions<T>>(x: T, n: T, signed: bo
 }
 
 /// Extended euclidean algorithm to compute the inverse of x in yℤ[x]
-fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Result<Vec<T>, &'static str> {
-    let (x, y) = normalize!(x, y);
+#[inline]
+pub fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Result<Vec<T>, &'static str> {
+    let (x, y) = normalize(x, y);
+    println!("euclid: {:?} / {:?}", x, y);
 
     let mut new_t = vec![T::default(); x.len()];
     new_t[0] = T::from_literal(1);
@@ -319,6 +285,7 @@ fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Result<Vec<T>
     let mut r = y.clone();
 
     while !is_zero(&new_r) {
+        println!("{:?} / {:?}", r, new_r);
         let q = euclid_div(&r, &new_r, n).0;
 
         let tmp = new_r.clone();
@@ -335,47 +302,6 @@ fn extended_euclid<T: TRestrictions<T>>(x: &[T], y: &[T], n: T) -> Result<Vec<T>
     }
 
     Ok(poly_mul(&t, &poly_z_inv(&r, n), n))
-}
-
-/// The poly struct.
-/// Note that while this is a polynomial over ℤn[x]/mℤ[x] it is not necessarily reduced
-/// by mℤ[x], i.e. poly might be larger. Call `reduce` to make sure poly is in ℤn/mℤ.
-///
-/// Use arithmetic operations on `Seq<T>` to use non-quotient rings.
-#[derive(Default, Debug, PartialEq, Clone)]
-pub struct Poly<T: TRestrictions<T>> {
-    poly: Vec<T>,
-    irr: Vec<T>,
-    /// `n` is set to 0 if not specified and ignored.
-    n: T,
-}
-
-#[macro_export]
-macro_rules! poly_n {
-    ($name:ident, $t:ty, $l: expr, $n:expr) => {
-        struct $name;
-        impl $name {
-            fn new(p: &[(usize, u128)]) -> Poly<$t> {
-                Poly::sparse($l, p, $n)
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! poly_n_m {
-    ($name:ident, $t:ty, $l:expr, $n:expr, $m:expr) => {
-        struct $name;
-        impl $name {
-            fn new(p: &[(usize, u128)]) -> Poly<$t> {
-                Poly::sparse_full($l, p, $n, $m)
-            }
-            fn random() -> Poly<$t> {
-                // TODO: this can panic; also not sure if it's exactly what we want.
-                Poly::sparse_random($l, 0..$n, $n, $m)
-            }
-        }
-    };
 }
 
 #[macro_export]
@@ -459,6 +385,12 @@ macro_rules! poly {
                 }
                 return true;
             }
+            /// Invert this polynomial.
+            /// **Panics** if the polynomial is not invertible.
+            fn inv(self) -> Self {
+                println!("inv {:?}", self);
+                Self::from(extended_euclid(&self.poly, &self.irr, self.n).unwrap())
+            }
         }
 
         impl From<Vec<$t>> for $name {
@@ -485,12 +417,20 @@ macro_rules! poly {
         }
 
         impl fmt::Debug for $name {
-            // TODO: print irr and n as well
+            // TODO: ugh
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                "poly: ".fmt(f).unwrap();
                 self.poly
                     .iter()
                     .collect::<Vec<_>>()
-                    .fmt(f)
+                    .fmt(f).unwrap();
+                ", irr: ".fmt(f).unwrap();
+                self.irr
+                    .iter()
+                    .collect::<Vec<_>>()
+                    .fmt(f).unwrap();
+                ", n: ".fmt(f).unwrap();
+                self.n.fmt(f)
             }
         }
 
@@ -499,7 +439,7 @@ macro_rules! poly {
                 if !self.compatible(other) {
                     return false;
                 }
-                for (a, b) in self.irr.iter().zip(other.irr.iter()) {
+                for (a, b) in self.poly.iter().zip(other.poly.iter()) {
                     if a != b {
                         return false;
                     }
@@ -549,347 +489,6 @@ macro_rules! poly {
             }
         }
     };
-}
-
-// FIXME: clean-up!
-impl<T: TRestrictions<T>> Poly<T> {
-    pub fn sparse(l: usize, p: &[(usize, u128)], n: u128) -> Self {
-        Self::sparse_full(l, p, n, &[])
-    }
-    pub fn sparse_full(l: usize, p: &[(usize, u128)], n: u128, irr_in: &[(usize, u128)]) -> Self {
-        let mut poly = vec![T::default(); l];
-        for c in p.iter() {
-            poly[c.0] = T::from_literal(c.1);
-        }
-        let mut irr = vec![T::default(); l+1];
-        for c in irr_in.iter() {
-            irr[c.0] = T::from_literal(c.1);
-        }
-        Self {
-            poly: poly,
-            irr: irr,
-            n: T::from_literal(n),
-        }
-    }
-    pub fn sparse_random(l: usize, r: std::ops::Range<i128>, n: u128, irr_in: &[(usize, u128)]) -> Self {
-        let mut irr = vec![T::default(); l+1];
-        for c in irr_in.iter() {
-            irr[c.0] = T::from_literal(c.1);
-        }
-        Self {
-            poly: random_poly(l, r.start, r.end).b,
-            irr: irr,
-            n: T::from_literal(n),
-        }
-    }
-    pub fn from_array(p: &[u128], n: u128) -> Self {
-        Self {
-            poly: Self::u128_to_t(p),
-            irr: Self::u128_to_t(&[]),
-            n: T::from_literal(n),
-        }
-    }
-
-    fn build_from_irr_poly(irr_in: &[T], p: &[T]) -> Self {
-        Self {
-            poly: p.to_vec(),
-            irr: irr_in.to_vec(),
-            n: T::default(),
-        }
-    }
-    fn build(irr_in: &[T], p: &[T], n_in: &T) -> Self {
-        Self {
-            poly: p.to_vec(),
-            irr: irr_in.to_vec(),
-            n: *n_in,
-        }
-    }
-
-    fn u128_to_t(v: &[u128]) -> Vec<T> {
-        v.iter().map(|x| T::from_literal(*x)).collect::<Vec<T>>()
-    }
-
-    fn i128_to_t(v: &[i128]) -> Vec<T> {
-        v.iter()
-            .map(|x| T::from_signed_literal(*x))
-            .collect::<Vec<T>>()
-    }
-
-    // FIXME: fix the horrible naming and API
-    // TODO: should this reduce p and n?
-    pub fn new_full(irr_in: &[u128], p: &[u128], n_in: u128) -> Self {
-        Self {
-            poly: Self::u128_to_t(p),
-            irr: Self::u128_to_t(irr_in),
-            n: T::from_literal(n_in),
-        }
-    }
-    // TODO: should this reduce p?
-    pub fn new(irr_in: &[u128], p: &[u128]) -> Self {
-        Self {
-            poly: Self::u128_to_t(p),
-            irr: Self::u128_to_t(irr_in),
-            n: T::default(),
-        }
-    }
-    // TODO: should this reduce p?
-    pub fn new_signed(irr_in: &[i128], p: &[i128]) -> Self {
-        Self {
-            poly: Self::i128_to_t(p),
-            irr: Self::i128_to_t(irr_in),
-            n: T::default(),
-        }
-    }
-    // TODO: should this reduce p and n?
-    pub fn new_signed_full(irr_in: &[i128], p: &[i128], n_in: i128) -> Self {
-        Self {
-            poly: Self::i128_to_t(p),
-            irr: Self::i128_to_t(irr_in),
-            n: T::from_signed_literal(n_in),
-        }
-    }
-    // TODO: should this reduce p?
-    pub fn new_monomial(irr_in: &[u128], c: T, d: usize) -> Self {
-        Self {
-            poly: monomial(c, d),
-            irr: Self::u128_to_t(irr_in),
-            n: T::default(),
-        }
-    }
-
-    // TODO: should this reduce p?
-    pub fn new_poly(self, p: &[u128]) -> Self {
-        Self {
-            poly: Self::u128_to_t(p),
-            irr: self.irr[..].to_vec(),
-            n: self.n,
-        }
-    }
-
-    /// Generate random polynomial with given coefficient bounds and irreducible.
-    /// Note that this requires min and max to be `i128`. For random coefficients
-    /// in `T` that don't fit in `i128` use generators on `T`.
-    pub fn random(irr_in: Seq<T>, r: std::ops::Range<i128>, n_in: T) -> Self {
-        Self {
-            poly: random_poly(irr_in.len() - 1, r.start, r.end).b,
-            irr: irr_in.b,
-            n: n_in,
-        }
-    }
-
-    /// Returns the leading coefficient of this polynomial and it's index.
-    pub fn leading_coefficient(self) -> (usize, T) {
-        leading_coefficient(&self.poly)
-    }
-    /// Reduce `self`, i.e. `self.poly` by the irreducible.
-    /// Returns `self.poly % self.irr`.
-    pub fn reduce(self) -> Self {
-        Self {
-            poly: euclid_div(&self.poly, &self.irr, self.n).1,
-            irr: self.irr[..].to_vec(),
-            n: self.n,
-        }
-        .truncate()
-    }
-    /// Pad self.poly to length l with zeroes.
-    pub fn pad(self, l: usize) -> Self {
-        debug_assert!(l >= self.poly.len());
-        Self {
-            poly: pad(&self.poly, l),
-            irr: self.irr[..].to_vec(),
-            n: self.n,
-        }
-    }
-    /// Truncate self.poly, removing trailing zeroes.
-    pub fn truncate(&self) -> Self {
-        Self {
-            poly: truncate(&self.poly),
-            irr: self.irr[..].to_vec(),
-            n: self.n,
-        }
-    }
-    /// Returns `true` if this is an all-zero polynomial.
-    pub fn is_zero(self) -> bool {
-        is_zero(&self.poly)
-    }
-
-    /// Euclidean division returning (q, r)
-    pub fn euclid_div(self, rhs: Poly<T>) -> (Poly<T>, Poly<T>) {
-        let (q, r) = euclid_div(&self.poly, &rhs.poly, self.n);
-        (
-            Self {
-                poly: q,
-                irr: self.irr.clone(),
-                n: self.n,
-            },
-            Self {
-                poly: r,
-                irr: self.irr.clone(),
-                n: self.n,
-            },
-        )
-    }
-
-    /// Invert this polynomial.
-    pub fn inv(self) -> Self {
-        Self {
-            poly: extended_euclid(&self.poly, &self.irr, self.n).unwrap(),
-            irr: self.irr.clone(),
-            n: self.n,
-        }
-    }
-}
-
-macro_rules! impl_from {
-    ($t:ty) => {
-        impl<T: TRestrictions<T>> From<&[$t]> for Poly<T> {
-            fn from(v: &[$t]) -> Poly<T> {
-                Poly::new(
-                    &[0],
-                    &v.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
-                )
-            }
-        }
-        impl<T: TRestrictions<T>> From<(&[$t], &[$t])> for Poly<T> {
-            fn from(v: (&[$t], &[$t])) -> Poly<T> {
-                Poly::new(
-                    &v.0.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
-                    &v.1.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
-                )
-            }
-        }
-        impl<T: TRestrictions<T>> From<(&[$t], &[$t], $t)> for Poly<T> {
-            fn from(v: (&[$t], &[$t], $t)) -> Poly<T> {
-                Poly::new_full(
-                    &v.0.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
-                    &v.1.iter().map(|&x| u128::from(x)).collect::<Vec<u128>>(),
-                    u128::from(v.2),
-                )
-            }
-        }
-    };
-}
-
-macro_rules! impl_from_signed {
-    ($t:ty) => {
-        impl<T: TRestrictions<T>> From<&[$t]> for Poly<T> {
-            fn from(v: &[$t]) -> Poly<T> {
-                Poly::new_signed(
-                    &[0],
-                    &v.iter().map(|&x| i128::from(x)).collect::<Vec<i128>>(),
-                )
-            }
-        }
-        impl<T: TRestrictions<T>> From<(&[$t], &[$t])> for Poly<T> {
-            fn from(v: (&[$t], &[$t])) -> Poly<T> {
-                Poly::new_signed(
-                    &v.0.iter().map(|&x| i128::from(x)).collect::<Vec<i128>>(),
-                    &v.1.iter().map(|&x| i128::from(x)).collect::<Vec<i128>>(),
-                )
-            }
-        }
-        impl<T: TRestrictions<T>> From<(&[$t], &[$t], $t)> for Poly<T> {
-            fn from(v: (&[$t], &[$t], $t)) -> Poly<T> {
-                Poly::new_signed_full(
-                    &v.0.iter().map(|&x| i128::from(x)).collect::<Vec<i128>>(),
-                    &v.1.iter().map(|&x| i128::from(x)).collect::<Vec<i128>>(),
-                    i128::from(v.2),
-                )
-            }
-        }
-    };
-}
-
-impl_from!(u8);
-impl_from!(u16);
-impl_from!(u32);
-impl_from!(u64);
-impl_from!(u128);
-
-impl_from_signed!(i8);
-impl_from_signed!(i16);
-impl_from_signed!(i32);
-impl_from_signed!(i64);
-impl_from_signed!(i128);
-
-/// Polynomial subtraction
-impl<T: TRestrictions<T>> Sub for Poly<T> {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
-        debug_assert!(self.irr == rhs.irr);
-        debug_assert!(self.n == rhs.n);
-        Self {
-            poly: poly_sub(&self.poly, &rhs.poly, self.n),
-            irr: self.irr.clone(),
-            n: self.n,
-        }
-    }
-}
-
-/// Polynomial addition
-impl<T: TRestrictions<T>> Add for Poly<T> {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        debug_assert!(self.irr == rhs.irr);
-        debug_assert!(self.n == rhs.n);
-        Self {
-            poly: poly_add(&self.poly, &rhs.poly, self.n),
-            irr: self.irr.clone(),
-            n: self.n,
-        }
-    }
-}
-
-/// Polynomial multiplication on ℤn[x]/mℤ[x]
-impl<T: TRestrictions<T>> Mul for Poly<T> {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self::Output {
-        debug_assert!(self.n == rhs.n);
-        debug_assert!(self.irr == rhs.irr);
-        let tmp = poly_mul(&self.poly, &rhs.poly, self.n);
-        let r = Self {
-            poly: tmp,
-            irr: self.irr,
-            n: self.n,
-        };
-        if r.irr.is_empty() {
-            r
-        } else {
-            r.reduce()
-        }
-    }
-}
-
-/// Polynomial division on ℤn[x]/mℤ[x]
-/// The result is reduced modulo mℤ[x] only if present.
-impl<T: TRestrictions<T>> Div for Poly<T> {
-    type Output = (Self, Self);
-    fn div(self, rhs: Self) -> Self::Output {
-        debug_assert!(self.n == rhs.n);
-        debug_assert!(self.irr == rhs.irr);
-        let r = euclid_div(&self.poly, &rhs.poly, self.n);
-        let r = if self.irr.is_empty() {
-            r
-        } else {
-            // TODO: do we ever want this?
-            (
-                euclid_div(&r.0, &self.irr, self.n).1,
-                euclid_div(&r.1, &self.irr, self.n).1,
-            )
-        };
-        (
-            Self {
-                poly: r.0,
-                irr: self.irr.clone(),
-                n: self.n,
-            },
-            Self {
-                poly: r.1,
-                irr: self.irr,
-                n: self.n,
-            },
-        )
-    }
 }
 
 /// Polynomial multiplication on ℤ[x]

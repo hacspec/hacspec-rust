@@ -29,19 +29,24 @@ macro_rules! impl_unsigned_integer {
     ($t:ty) => {
         impl Integer<$t> for $t {
             /// Cast to this type can be unsafe.
+            #[inline]
             fn from_literal(x: u128) -> $t {
                 x as $t
             }
+            #[inline]
             fn from_signed_literal(x: i128) -> $t {
                 x as $t
             }
             /// **Panics**
+            #[inline]
             fn inv(x: $t, n: $t) -> $t {
                 extended_euclid_invert(x, n, false)
             }
+            #[inline]
             fn sub_lift(self, rhs: $t, n: $t) -> $t {
                 self.sub_mod(rhs, n)
             }
+            #[inline]
             fn sub_mod(self, rhs: $t, n: $t) -> $t {
                 if n == 0 {
                     return self - rhs;
@@ -53,6 +58,7 @@ macro_rules! impl_unsigned_integer {
                 }
                 lhs - rhs
             }
+            #[inline]
             fn add_mod(self, rhs: $t, n: $t) -> $t {
                 if n != 0 {
                     (self + rhs) % n
@@ -60,6 +66,7 @@ macro_rules! impl_unsigned_integer {
                     self + rhs
                 }
             }
+            #[inline]
             fn mul_mod(self, rhs: $t, n: $t) -> $t {
                 if n == 0 {
                     self * rhs
@@ -67,12 +74,15 @@ macro_rules! impl_unsigned_integer {
                     (self * rhs) % n
                 }
             }
+            #[inline]
             fn rem(self, n: $t) -> $t {
                 self % n
             }
+            #[inline]
             fn max() -> $t {
                 <$t>::max_value()
             }
+            #[inline]
             fn abs(self) -> $t {
                 self
             }
@@ -89,18 +99,23 @@ impl_unsigned_integer!(u128);
 
 impl Integer<i128> for i128 {
     /// **Warning** might be lossy
+    #[inline]
     fn from_literal(x: u128) -> i128 {
         x as i128
     }
+    #[inline]
     fn from_signed_literal(x: i128) -> i128 {
         x
     }
+    #[inline]
     fn inv(x: i128, n: i128) -> i128 {
         extended_euclid_invert(x.abs(), n.abs(), true)
     }
+    #[inline]
     fn sub_lift(self, rhs: i128, n: i128) -> i128 {
         self - rhs
     }
+    #[inline]
     fn sub_mod(self, rhs: i128, n: i128) -> i128 {
         if n != 0 {
             signed_mod(self - rhs, n)
@@ -108,6 +123,7 @@ impl Integer<i128> for i128 {
             self - rhs
         }
     }
+    #[inline]
     fn add_mod(self, rhs: i128, n: i128) -> i128 {
         if n != 0 {
             signed_mod(self + rhs, n)
@@ -115,6 +131,7 @@ impl Integer<i128> for i128 {
             self + rhs
         }
     }
+    #[inline]
     fn mul_mod(self, rhs: i128, n: i128) -> i128 {
         if n == 0 {
             self * rhs
@@ -122,12 +139,15 @@ impl Integer<i128> for i128 {
             (self * rhs) % n
         }
     }
+    #[inline]
     fn rem(self, n: i128) -> i128 {
         self % n
     }
+    #[inline]
     fn max() -> i128 {
         i128::max_value()
     }
+    #[inline]
     fn abs(self) -> i128 {
         self.abs()
     }

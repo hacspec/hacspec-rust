@@ -1,15 +1,5 @@
 use hacspec::prelude::*;
 
-macro_rules! gen_poly {
-    ($t:ty,$i:expr,$v1:expr,$v2:expr,$e:expr,$n:expr) => {{
-        (
-            Poly::<$t>::from((&$i[..], &$v1[..], $n)),
-            Poly::<$t>::from((&$i[..], &$v2[..], $n)),
-            Poly::<$t>::from((&$i[..], &$e[..], $n)),
-        )
-    }};
-}
-
 #[test]
 fn test_zn_inv() {
     let n = 65537;
@@ -25,238 +15,144 @@ fn test_zn_inv() {
 
 #[test]
 fn test_poly_add() {
-    fn test_add<T: TRestrictions<T>>(x: Poly<T>, y: Poly<T>, expected: Poly<T>) {
-        let c = x.clone() + y.clone();
-        println!("{:x?} + {:x?} = {:x?}", x, y, c);
-        assert_eq!(c, expected);
-    }
-
     // Polynomials without irreducible and without coefficient modulus.
-    let a = Poly::<u128>::from(&[0, 1, 1][..]);
-    let b = Poly::<u128>::from(&[1, 0, 2][..]);
-    let e = Poly::<u128>::from(&[1, 1, 3][..]);
-    test_add(a, b, e);
-    let a = Poly::<i128>::from(&[-1, 1, 0][..]);
-    let b = Poly::<i128>::from(&[1, 0, -5][..]);
-    let e = Poly::<i128>::from(&[0, 1, -5][..]);
-    test_add(a, b, e);
-    let a = Poly::<u128>::from(&[0, 1, 1][..]);
-    let b = Poly::<u128>::from(&[1, 0, 2][..]);
-    let e = Poly::<u128>::from(&[1, 1, 3][..]);
-    test_add(a, b, e);
+    poly!(Zx, u128, 256, 0, &[(0, 0)]);
+    poly!(Zs, i128, 256, 0, &[(0, 0)]);
+
+    let a = Zx::new(&[(78, 1), (222, 1)]);
+    let b = Zx::new(&[(0, 1), (222, 2)]);
+    let e = Zx::new(&[(0, 1), (78, 1), (222, 3)]);
+    let c = a + b;
+    println!("{:x?} + {:x?} = {:x?}\nexpected: {:x?}", a, b, c, e);
+    assert_eq!(c, e);
+
+    let a = Zs::new(&[(0, -1), (78, 1)]);
+    let b = Zs::new(&[(0, 1), (78, 0), (222, -5)]);
+    let e = Zs::new(&[(78, 1), (222, -5)]);
+    let c = a + b;
+    println!("{:x?} + {:x?} = {:x?}\nexpected: {:x?}", a, b, c, e);
+    assert_eq!(c, e);
 
     // Polynomials without irreducible but with coefficient modulus.
-    let (a, b, e) = gen_poly!(u128, [0], [0, 1, 1], [1, 0, 2], [1, 1, 0], 3);
-    test_add(a, b, e);
-    let (a, b, e) = gen_poly!(i128, [0], [0, 1, 1], [1, 0, 2], [1, 1, 0], 3);
-    test_add(a, b, e);
-    let (a, b, e) = gen_poly!(i128, [0], [-1, 1, 0], [1, 0, -5], [0, 1, 1], 3);
-    test_add(a, b, e);
+    poly!(ZxN, u128, 256, 3, &[(0, 0)]);
+    poly!(ZsN, i128, 256, 3, &[(0, 0)]);
 
-    // Only simple test as irreducible isn't affecting addition.
-    let (a, b, e) = gen_poly!(u128, [0, 1, 2, 3], [0, 1, 1], [1, 0, 2], [1, 1, 0], 3);
-    test_add(a, b, e);
-    let (a, b, e) = gen_poly!(i128, [0, 1, 2, 3], [0, 1, 1], [1, 0, 2], [1, 1, 0], 3);
-    test_add(a, b, e);
+    let a = ZxN::new(&[(78, 1), (222, 1)]);
+    let b = ZxN::new(&[(0, 1), (222, 2)]);
+    let e = ZxN::new(&[(0, 1), (78, 1)]);
+    let c = a + b;
+    println!("{:x?} + {:x?} = {:x?}\nexpected: {:x?}", a, b, c, e);
+    assert_eq!(c, e);
+
+    let a = ZsN::new(&[(0, -1), (78, 1)]);
+    let b = ZsN::new(&[(0, 1), (222, -5)]);
+    let e = ZsN::new(&[(78, 1), (222, 1)]);
+    let c = a + b;
+    println!("{:x?} + {:x?} = {:x?}\nexpected: {:x?}", a, b, c, e);
+    assert_eq!(c, e);
 }
 
-#[test]
-fn test_poly_sub() {
-    fn test_sub<T: TRestrictions<T>>(x: Poly<T>, y: Poly<T>, expected: Poly<T>) {
-        let c = x.clone() - y.clone();
-        println!("{:x?} - {:x?} = {:x?}", x, y, c);
-        assert_eq!(c, expected);
-    }
-
-    // Polynomials without irreducible and without coefficient modulus.
-    let a = Poly::<i128>::from(&[0, 1, 1][..]);
-    let b = Poly::<i128>::from(&[1, 0, 2][..]);
-    let e = Poly::<i128>::from(&[-1, 1, -1][..]);
-    test_sub(a, b, e);
-    let a = Poly::<u128>::from(&[1, 1, 5][..]);
-    let b = Poly::<u128>::from(&[1, 0, 2][..]);
-    let e = Poly::<u128>::from(&[0, 1, 3][..]);
-    test_sub(a, b, e);
-
-    // Polynomials without irreducible but with coefficient modulus.
-    let (a, b, e) = gen_poly!(i128, [0], [0, 1, 1], [1, 0, 2], [6, 1, 6], 7);
-    test_sub(a, b, e);
-    let (a, b, e) = gen_poly!(i128, [0], [-1, 1, 0], [1, 0, -5], [253, 1, 5], 255);
-    test_sub(a, b, e);
-    let (a, b, e) = gen_poly!(u128, [0], [1, 1, 5], [1, 0, 2], [0, 1, 3], 256);
-    test_sub(a, b, e);
-
-    // Only simple test as irreducible isn't affecting subtraction.
-    let (a, b, e) = gen_poly!(i128, [0, 1, 2, 3], [-1, 1, 0], [1, 0, -5], [253, 1, 5], 255);
-    test_sub(a, b, e);
-    let (a, b, e) = gen_poly!(u128, [0, 1, 2, 3], [1, 1, 5], [1, 0, 2], [0, 1, 3], 256);
-    test_sub(a, b, e);
-}
+// #[test]
+// fn test_poly_sub() {
+// }
 
 #[test]
-fn test_poly_euclid_div() {
-    fn test_div<T: TRestrictions<T>>(
-        x: Poly<T>,
-        y: Poly<T>,
-        expected_c: Poly<T>,
-        expected_r: Poly<T>,
-    ) {
-        let (c, r) = x.clone().euclid_div(y.clone());
-        println!("{:x?} / {:x?} = {:x?}, {:x?}", x, y, c, r);
-        assert_eq!(c.truncate(), expected_c);
-        assert_eq!(r.truncate(), expected_r);
-    }
+fn test_poly_div() {
+    const l: usize = 3;
+    poly!(ZxN, u128, l, 3, &[(0, 2), (1, 2), (3, 1)]);
+    poly!(ZsN, i128, l, 3, &[(0, 2), (1, 2), (3, 1)]);
 
-    let (a, b, e) = gen_poly!(u128, [2, 2, 0, 1], [1, 0, 2], [0, 1, 1], [2], 3);
-    let remainder = Poly::<u128>::new_full(&[2, 2, 0, 1], &[1, 1], 3);
-    test_div(a, b, e, remainder);
+    let x = ZxN::new(&[(0, 1), (2, 2)]);
+    let y = ZxN::new(&[(1, 1), (2, 1)]);
+    let expected_c = ZxN::new(&[(0, 2)]);
+    let expected_r = ZxN::new(&[(0, 1), (1, 1)]);
 
-    let (a, b, e) = gen_poly!(u128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [6], 11);
-    let remainder = Poly::<u128>::new_full(&[2, 2, 0, 1], &[5, 1], 11);
-    test_div(a, b, e, remainder);
+    let (c, r) = x / y;
+    println!("{:x?} / {:x?} = {:x?}, {:x?}", x, y, c, r);
+    assert_eq!(c, expected_c);
+    assert_eq!(r, expected_r);
+
+    let x = ZsN::new(&[(0, 1), (2, 2)]);
+    let y = ZsN::new(&[(1, 1), (2, 1)]);
+    let expected_c = ZsN::new(&[(0, 2)]);
+    let expected_r = ZsN::new(&[(0, 1), (1, 1)]);
+
+    let (c, r) = x / y;
+    println!("{:x?} / {:x?} = {:x?}, {:x?}", x, y, c, r);
+    assert_eq!(c, expected_c);
+    assert_eq!(r, expected_r);
 }
 
 #[test]
 fn test_poly_mul() {
-    fn test_mul<T: TRestrictions<T>>(x: Poly<T>, y: Poly<T>, expected: Poly<T>) {
-        let c = x.clone() * y.clone();
-        println!("{:x?} * {:x?} = {:x?}", x, y, c);
-        assert_eq!(c, expected);
-    }
+    const l: usize = 3;
+    poly!(ZxN, u128, l, 11, &[(0, 2), (1, 2), (3, 1)]);
+    poly!(ZsN, i128, l, 11, &[(0, 2), (1, 2), (3, 1)]);
 
-    let (a, b, e) = gen_poly!(u128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [7, 4, 8], 11);
-    test_mul(a, b, e);
-    let (a, b, e) = gen_poly!(i128, [2, 2, 0, 1], [0, 1, 1], [1, 0, 2], [7, 4, 8], 11);
-    test_mul(a, b, e);
-    let (a, b, e) = gen_poly!(i128, [2, 2, 0, 1], [-3, 5, -1], [1, -2, -7], [8, 8, 7], 11);
-    test_mul(a, b, e);
+    let x = ZxN::new(&[(0, 1), (2, 2)]);
+    let y = ZxN::new(&[(1, 1), (2, 1)]);
+    let expected = ZxN::new(&[(0, 7), (1, 4), (2, 8)]);
+
+    let c = x * y;
+    println!("{:x?} * {:x?} = {:x?}", x, y, c);
+    assert_eq!(c, expected);
+
+    let x = ZsN::new(&[(0, 1), (2, 2)]);
+    let y = ZsN::new(&[(1, 1), (2, 1)]);
+    let expected = ZsN::new(&[(0, 7), (1, 4), (2, 8)]);
+
+    let c = x * y;
+    println!("{:x?} * {:x?} = {:x?}", x, y, c);
+    assert_eq!(c, expected);
+
+    let x = ZsN::new(&[(0, -3), (1, 5), (2, -1)]);
+    let y = ZsN::new(&[(0, 1), (1, -2), (2, -7)]);
+    let expected = ZsN::new(&[(0, 8), (1, 8), (2, 7)]);
+
+    let c = x * y;
+    println!("{:x?} * {:x?} = {:x?}", x, y, c);
+    assert_eq!(c, expected);
 
     // Use random values, so no expected value possible here.
-    let irr = random_poly::<u128>(2048, 0, 3);
-    let a = Poly::<u128>::random(irr.clone(), 0..3, 3);
-    let b = Poly::<u128>::random(irr.clone(), 0..3, 3);
-    let r = a.clone() * b.clone();
+    poly!(ZxLarge, u128, 592_358, 86_028_121, &[(0, 2), (1, 2), (3, 1)]);
+    let a = ZxN::random();
+    let b = ZxN::random();
+    let r = a * b;
     println!("{:x?} * {:x?} = {:x?}", a, b, r);
 }
 
 #[test]
 fn test_poly_inversion() {
-    let irr = [2, 2, 0, 1];
-    let a = Poly::<u128>::new_full(&irr, &[2, 2, 0], 3);
-    let b = Poly::<u128>::new_full(&irr, &[1, 2, 2], 3);
-    let c = Poly::<u128>::new_full(&irr, &[0, 0, 1], 3);
+    const l: usize = 3;
+    poly!(ZxN, u128, l, 3, &[(0, 2), (1, 2), (3, 1)]);
+    // TODO: Signed inversion?
+    let one_poly = ZxN::new(&[(0, 1)]);
 
-    fn test_poly_inversion(p: Poly<u128>, irr: &[u128]) {
-        let p_inv = p.clone().inv();
-        println!(" > p: {:x?}", p.clone());
-        println!(" > p_inv: {:x?}", p_inv.clone());
-        let test = p * p_inv;
-        println!(" > (p_inv * p) % irr: {:x?}", test);
-        assert_eq!(test, Poly::<u128>::new_full(&irr, &[1], 3));
-    }
-
-    test_poly_inversion(a, &irr);
-    test_poly_inversion(b, &irr);
-    test_poly_inversion(c, &irr);
-
-    // let irr = random_poly::<u128>(2048, 0, 3);
-    // let a = Poly::<u128>::random(&irr, 0..3, 3);
-    // let b = Poly::<u128>::random(&irr, 0..3, 3);
-    // test_poly_inversion(a, &irr);
-    // test_poly_inversion(b, &irr);
+    let a = ZxN::new(&[(0, 2), (1, 2)]);
+    let a_inv = a.inv();
+    let test = a * a_inv;
+    assert_eq!(test, one_poly);
+    
+    let a = ZxN::new(&[(0, 1), (1, 2), (2, 2)]);
+    let a_inv = a.inv();
+    let test = a * a_inv;
+    assert_eq!(test, one_poly);
+    
+    let a = ZxN::new(&[(2, 1)]);
+    let a_inv = a.inv();
+    let test = a * a_inv;
+    assert_eq!(test, one_poly);
 }
 
 #[test]
 #[should_panic]
 fn test_poly_inversion_panic() {
+    poly!(ZxN, u128, 11, 3, &[(0, 2), (1, 2), (2, 1), (3, 2), (4, 2), (5, 1), (6, 2), (8, 2), (10, 2), (11, 2)]);
     // Not invertible
-    let irr = [2, 2, 1, 2, 2, 1, 2, 0, 2, 0, 2, 2];
-    let a = Poly::<u128>::new_full(&irr, &[0, 1, 2, 0, 2, 2, 0, 0, 2, 0, 0], 3);
-    let a_inv = a.inv();
+    // let irr = [2, 2, 1, 2, 2, 1, 2, 0, 2, 0, 2, 2];
+    let a = ZxN::new_full([0, 1, 2, 0, 2, 2, 0, 0, 2, 0, 0]);
+    let _ = a.inv();
 }
-
-#[test]
-fn test_poly_ops() {
-    let irr = [2, 2, 0, 1];
-    let x = Poly::<u128>::new_full(&irr, &[2, 2, 1], 3);
-    let y = Poly::<u128>::new_full(&irr, &[1, 2, 0], 3);
-
-    let z = x.clone() + y.clone();
-    let z = z.clone() - x.clone();
-    assert_eq!(z.truncate(), y.truncate());
-
-    let z = x.clone() * y.clone();
-    println!("{:x?} * {:x?} = {:x?}", x.clone(), y.clone(), z.clone());
-    assert_eq!(z.truncate(), Poly::<u128>::new_full(&irr, &[1, 2, 2], 3));
-
-    let (zq, zr) = x.clone() / y.clone();
-    println!(
-        "{:x?} / {:x?} = {:x?}; {:x?}",
-        x.clone(),
-        y.clone(),
-        zq.clone(),
-        zr.clone()
-    );
-    assert_eq!(zr.truncate(), Poly::<u128>::new_full(&irr, &[2], 3));
-    assert_eq!(zq.truncate(), Poly::<u128>::new_full(&irr, &[0, 2], 3));
-}
-
-#[test]
-fn test_poly_ops_doc() {
-    let x = Poly::<u128>::from_array(&[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
-    let y = Poly::<u128>::from_array(&[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
-    let z = x.clone() * y.clone();
-    assert_eq!(
-        z.truncate(),
-        Poly::<u128>::from_array(&[10, 9, 5, 0, 6, 9, 0, 6, 3], 11)
-    );
-    let z = x.clone() + y.clone();
-    assert_eq!(z, Poly::<u128>::from_array(&[7, 3, 7, 10, 2], 11));
-    let z = x.clone() - y.clone();
-    assert_eq!(z, Poly::<u128>::from_array(&[3, 1, 7, 6, 5], 11));
-    let (q, r) = x.clone() / y.clone();
-    assert_eq!(q.truncate(), Poly::<u128>::from_array(&[5], 11));
-    assert_eq!(r.truncate(), Poly::<u128>::from_array(&[6, 8, 7, 9], 11));
-
-    // Now over ℤn/mℤ[x]
-    let irr = [1, 3, 5, 0, 8, 6];
-    let x = Poly::<u128>::new_full(&irr, &[5, 2, 7, 8, 9], 11); // 5 + 2x + 7x² + 8x³ + 9x⁴
-    let y = Poly::<u128>::new_full(&irr, &[2, 1, 0, 2, 4], 11); // 2 + 1x       + 2x³ + 4x⁴
-    let z = x.clone() * y.clone();
-    assert_eq!(
-        z.truncate(),
-        Poly::<u128>::new_full(&irr, &[7, 9, 2, 5, 10], 11)
-    );
-    let z = x.clone() + y.clone();
-    assert_eq!(z, Poly::<u128>::new_full(&irr, &[7, 3, 7, 10, 2], 11));
-    let z = x.clone() - y.clone();
-    assert_eq!(z, Poly::<u128>::new_full(&irr, &[3, 1, 7, 6, 5], 11));
-    let (q, r) = x.clone() / y.clone();
-    assert_eq!(q.truncate(), Poly::<u128>::new_full(&irr, &[5], 11));
-    assert_eq!(r.truncate(), Poly::<u128>::new_full(&irr, &[6, 8, 7, 9], 11));
-}
-
-// Rq = Z[X]/(3329, (X^256+1))
-poly_n_m!(Rq_kyber, u128, 256, 3329, &[(0, 1), (256, 1)]);
-
-#[test]
-fn test_poly_factory() {
-    poly_n!(R3, u128, 4, 3);
-    let x = R3::new(&[(0, 1), (1, 2), (3, 1)]);
-    println!("x: {:?}", x);
-
-    poly_n_m!(R3q, u128, 4, 3, &[(0, 1), (1, 2), (4, 1)]);
-    let x = R3q::new(&[(0, 1), (1, 2), (3, 1)]);
-    println!("x: {:?}", x);
-
-    let a = Rq_kyber::random();
-    let b = Rq_kyber::new(&[(5, 234), (122, 3000)]);
-    let c = a.clone() * b.clone();
-    println!("c: {:?}", c);
-}
-
-poly_n!(DummyPolyN, u128, 4, 3);
-poly_n_m!(DummyPolyNM, u128, 4, 3, &[(0, 1), (1, 2), (4, 1)]);
 
 // Rq = Z[X]/(3329, (X^256+1))
 poly!(RqKyberFixedLength, u128, 256, 3329, &[(0, 1), (256, 1)]);
