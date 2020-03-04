@@ -32,6 +32,7 @@ use crate::integer::*;
 ///! Note that this is equivalent to ℤn[x] (or ℤ[x] depending, depending on T).
 
 /// Rust's built-in modulo (x % n) is signed. This lifts x into ℤn+.
+#[inline]
 pub(crate) fn signed_mod(x: i128, n: i128) -> i128 {
     let mut ret = x % n;
     while ret < 0 {
@@ -40,6 +41,7 @@ pub(crate) fn signed_mod(x: i128, n: i128) -> i128 {
     ret
 }
 
+#[inline]
 fn pad<T: TRestrictions<T>>(v: &[T], l: usize) -> Vec<T> {
     let mut out = v.to_vec();
     for _ in out.len()..l {
@@ -48,6 +50,7 @@ fn pad<T: TRestrictions<T>>(v: &[T], l: usize) -> Vec<T> {
     out
 }
 
+#[inline]
 fn truncate<T: TRestrictions<T>>(v: &[T]) -> Vec<T> {
     let (d, c) = leading_coefficient(v);
     println!("d: {:?}, c: {:x?}", d, c);
@@ -58,6 +61,7 @@ fn truncate<T: TRestrictions<T>>(v: &[T]) -> Vec<T> {
     out
 }
 
+#[inline]
 fn monomial<T>(c: T, d: usize) -> Vec<T>
 where
     T: TRestrictions<T>,
@@ -66,13 +70,6 @@ where
     p[d] = c;
     p
 }
-
-// macro_rules! normalize {
-//     ($x:expr, $y:expr) => {{
-//         let max_len = std::cmp::max($x.len(), $y.len());
-//         (pad($x, max_len), pad($y, max_len))
-//     }};
-// }
 
 #[inline]
 fn normalize<T: TRestrictions<T>>(x: &[T], y: &[T]) -> (Vec<T>, Vec<T>) {
