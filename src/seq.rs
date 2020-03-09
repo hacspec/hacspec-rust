@@ -10,8 +10,7 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Default)]
 pub struct Seq<T: Copy> {
     pub(crate) b: Vec<T>,
-    // Running index used when data is pushed into a Seq.
-    pub(crate) idx: usize,
+    l: usize,
 }
 
 // TODO: Why ByteSeq with secret integers? Naming is odd
@@ -23,14 +22,6 @@ impl<T: Copy + Default> Seq<T> {
     pub fn new(l: usize) -> Self {
         Self {
             b: vec![T::default(); l],
-            idx: 0,
-        }
-    }
-    /// Get a new sequence from array `v`.
-    pub fn from_array(v: &[T]) -> Self {
-        Self {
-            b: v.to_vec(),
-            idx: 0,
         }
     }
     /// Get the size of this sequence.
@@ -67,9 +58,9 @@ impl<T: Copy + Default> Seq<T> {
     /// use hacspec::prelude::*;
     ///
     /// let mut s = Seq::<u8>::new(5);
-    /// let tmp = Seq::<u8>::from_array(&[2, 3]);
-    /// s = s.update_sub(2, tmp, 1, 1);
-    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 3, 0, 0]));
+    /// let tmp = Seq::<u8>::from(&[2, 3]);
+    /// s = s.update_slice(2, tmp, 1..2);
+    /// assert_eq!(s, Seq::<u8>::from(&[0, 0, 3, 0, 0]));
     /// ```
     pub fn update_sub<A: SeqTrait<T>>(
         self,
@@ -86,86 +77,7 @@ impl<T: Copy + Default> Seq<T> {
         }
         self_copy
     }
-    /// Update this sequence with `v` at position `start_out`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hacspec::prelude::*;
-    ///
-    /// let mut s = Seq::<u8>::new(5);
-    /// s = s.update_element(4, 7);
-    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 0, 0, 7]));
-    /// ```
-    pub fn update_element(mut self, start_out: usize, v: T) -> Self {
-        debug_assert!(self.len() >= start_out + 1);
-        self[start_out] = v;
-        self
-    }
-    /// Reset the sequence index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hacspec::prelude::*;
-    ///
-    /// let mut s = Seq::<u8>::new(5);
-    /// s = s.set_index(3);
-    /// s = s.push(Seq::<u8>::from_array(&[4, 5]));
-    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 0, 4, 5]));
-    /// ```
-    pub fn set_index(self, i: usize) -> Self {
-        Self {
-            b: self.b.clone(),
-            idx: i,
-        }
-    }
-    /// Push `v` to this sequence and move `idx` according to `v.len()`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hacspec::prelude::*;
-    ///
-    /// let mut s = Seq::<u8>::new(5);
-    /// s = s.set_index(3);
-    /// s = s.push(Seq::<u8>::from_array(&[4, 5]));
-    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 0, 4, 5]));
-    /// ```
-    pub fn push<A: SeqTrait<T>>(self, v: A) -> Self {
-        println!("{:?} >= {:?} + {:?}", self.len(), self.idx, v.len());
-        debug_assert!(self.len() >= self.idx + v.len());
-        let idx = self.idx;
-        let mut self_copy = self;
-        for (i, b) in v.iter().enumerate() {
-            self_copy[idx + i] = *b;
-        }
-        self_copy.idx += v.len();
-        self_copy
-    }
-    /// Push `l` elements from `v` to this sequence and move `idx` according to `l`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hacspec::prelude::*;
-    ///
-    /// let mut s = Seq::<u8>::new(5);
-    /// s = s.set_index(3);
-    /// s = s.push_sub(Seq::<u8>::from_array(&[4, 5]), 1, 1);
-    /// assert_eq!(s, Seq::<u8>::from_array(&[0, 0, 0, 5, 0]));
-    /// ```
-    pub fn push_sub<A: SeqTrait<T>>(self, v: A, start: usize, l: usize) -> Self {
-        debug_assert!(self.len() >= self.idx + l);
-        debug_assert!(v.len() >= start + l);
-        let idx = self.idx;
-        let mut self_copy = self;
-        for (i, b) in v.iter().skip(start).take(l).enumerate() {
-            self_copy[idx + i] = *b;
-        }
-        self_copy.idx += l;
-        self_copy
-    }
+    /// sub(self, start..end)
     pub fn sub(self, start_out: usize, len: usize) -> Self {
         Self::from(
             self.b
@@ -176,23 +88,9 @@ impl<T: Copy + Default> Seq<T> {
                 .collect::<Vec<T>>(),
         )
     }
-
-    pub fn from_sub<A: SeqTrait<T>>(input: A, r: Range<usize>) -> Self {
-        let mut a = Self::default();
-        for (i, v) in r
-            .clone()
-            .zip(input.iter().skip(r.start).take(r.end - r.start))
-        {
-            a[i] = *v;
-        }
-        a
-    }
-
-    pub fn chunks<'a>(&'a self, chunk_size: usize) -> impl Iterator<Item = (usize, Seq<T>)> + 'a {
-        self.b
-            .chunks(chunk_size)
-            .map(|c| (c.len(), Seq::<T>::from(c)))
-    }
+    // s.get_chunk(i: usize, block_size: usize)
+    // s.update_chunk(i: usize, block_size: usize, v: Seq<T>)
+    // s.chunks(block_size: usize)
 }
 
 impl Seq<U8> {
@@ -206,16 +104,11 @@ impl Seq<U8> {
     pub fn random(l: usize) -> Self {
         Self {
             b: Seq::get_random_vec(l),
-            idx: 0,
         }
-    }
-
-    pub fn to_hex(&self) -> String {
-        let strs: Vec<String> = self.b.iter().map(|b| format!("{:02x}", b)).collect();
-        strs.join("")
     }
 }
 
+// TODO: move to test crate (have everything declassified, so this works for U8 as well)
 impl Seq<u8> {
     pub fn to_hex(&self) -> String {
         let strs: Vec<String> = self.iter().map(|b| format!("{:02x}", b)).collect();
@@ -251,12 +144,14 @@ impl<T: Copy> IndexMut<u8> for Seq<T> {
 impl<T: Copy> Index<u32> for Seq<T> {
     type Output = T;
     fn index(&self, i: u32) -> &T {
+        debug_assert!(i <= usize::MAX);
         &self.b[i as usize]
     }
 }
 
 impl<T: Copy> IndexMut<u32> for Seq<T> {
     fn index_mut(&mut self, i: u32) -> &mut T {
+        debug_assert!(i <= usize::MAX);
         &mut self.b[i as usize]
     }
 }
@@ -264,12 +159,14 @@ impl<T: Copy> IndexMut<u32> for Seq<T> {
 impl<T: Copy> Index<i32> for Seq<T> {
     type Output = T;
     fn index(&self, i: i32) -> &T {
+        debug_assert!(i <= usize::MAX && i >= 0);
         &self.b[i as usize]
     }
 }
 
 impl<T: Copy> IndexMut<i32> for Seq<T> {
     fn index_mut(&mut self, i: i32) -> &mut T {
+        debug_assert!(i <= usize::MAX && i >= 0);
         &mut self.b[i as usize]
     }
 }
@@ -298,7 +195,6 @@ impl<T: Copy> From<Vec<T>> for Seq<T> {
     fn from(x: Vec<T>) -> Seq<T> {
         Self {
             b: x.clone(),
-            idx: 0,
         }
     }
 }
@@ -307,7 +203,6 @@ impl<T: Copy> From<&[T]> for Seq<T> {
     fn from(x: &[T]) -> Seq<T> {
         Self {
             b: x.to_vec(),
-            idx: 0,
         }
     }
 }
@@ -322,6 +217,7 @@ impl<T: Copy> From<&[T]> for Seq<T> {
 //                 }
 //             }
 //         }
+//         TODO: add From<&[$t]>
 //     };
 // }
 

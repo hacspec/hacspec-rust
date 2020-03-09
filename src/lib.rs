@@ -43,9 +43,9 @@ array!(DocPublicArray, 64, u32);
 
 /// Common trait for all byte arrays and sequences.
 pub trait SeqTrait<T: Copy> {
-    fn raw<'a>(&'a self) -> &'a [T];
+    fn raw<'a>(&'a self) -> &'a [T]; // TODO: disallow in clippy
     fn len(&self) -> usize;
-    fn iter(&self) -> std::slice::Iter<T>;
+    fn iter(&self) -> std::slice::Iter<T>; // TODO: disallow in clippy
 }
 
 bytes!(U32Word, 4);
