@@ -154,7 +154,11 @@ fn test_poly_inversion_panic() {
     let _ = a.inv();
 }
 
-// Rq = Z[X]/(3329, (X^256+1))
+// Rq = Z[X]/(3329, (X^256+1))                1      + x^256
+field_integer!(Z, ...);
+array!(F, Z, 256);
+poly!(Rq, F, [(0, 1), (256, 1)]);
+
 poly!(RqKyberFixedLength, u128, 256, 3329, &[(0, 1), (256, 1)]);
 
 #[test]

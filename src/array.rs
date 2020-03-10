@@ -32,59 +32,12 @@ macro_rules! _array_base {
             }
         }
 
-        impl From<&[$t]> for $name {
-            fn from(v: &[$t]) -> Self {
-                debug_assert!(v.len() <= $l);
-                let mut tmp = [<$t>::default(); $l];
-                for i in 0..v.len() {
-                    tmp[i] = v[i];
-                }
-                Self(tmp.clone())
-            }
-        }
-
         impl $name {
             pub fn new() -> Self {
                 Self([<$t>::default(); $l])
             }
             pub fn capacity() -> usize {
                 $l
-            }
-
-            pub fn from_sub_pad<A: SeqTrait<$t>>(input: A, r: Range<usize>) -> Self {
-                let mut a = Self::default();
-                for (i, v) in r
-                    .clone()
-                    .zip(input.iter().skip(r.start).take(r.end - r.start))
-                {
-                    a[i - r.start] = *v;
-                }
-                a
-            }
-
-            pub fn from_sub<A: SeqTrait<$t>>(input: A, r: Range<usize>) -> Self {
-                debug_assert!(
-                    $l == r.end - r.start,
-                    "sub range is not the length of the output type "
-                );
-                $name::from_sub_pad(input, r)
-            }
-
-            pub fn copy_pad<A: SeqTrait<$t>>(v: A) -> Self {
-                debug_assert!(v.len() <= $l);
-                let mut tmp = [<$t>::default(); $l];
-                for (i, x) in v.iter().enumerate() {
-                    tmp[i] = *x;
-                }
-                Self(tmp.clone())
-            }
-            pub fn copy<A: SeqTrait<$t>>(v: A) -> Self {
-                debug_assert!(v.len() == $l);
-                let mut tmp = [<$t>::default(); $l];
-                for (i, x) in v.iter().enumerate() {
-                    tmp[i] = *x;
-                }
-                Self(tmp.clone())
             }
             pub fn update<A: SeqTrait<$t>>(mut self, start: usize, v: A) -> Self {
                 debug_assert!(self.len() >= start + v.len());
@@ -107,10 +60,7 @@ macro_rules! _array_base {
                 }
                 self
             }
-            pub fn len(&self) -> usize {
-                $l
-            }
-            pub fn to_bytes_be(&self) -> [u8; $l * core::mem::size_of::<$t>()] {
+            pub fn to_bytes_be(&self) -> ByteSeq {
                 const FACTOR: usize = core::mem::size_of::<$t>();
                 let mut out = [0u8; $l * FACTOR];
                 for i in 0..$l {
@@ -121,40 +71,9 @@ macro_rules! _array_base {
                 }
                 out
             }
-
-            /// Get an iterator over this array with chunks of size `chunk_size`.
-            ///
-            /// # Examples
-            ///
-            /// ```
-            /// use hacspec::prelude::*;
-            ///
-            /// public_bytes!(Block, 5);
-            /// let a = Block::from([0, 1, 2, 3, 4]);
-            /// let mut a_chunks = a.chunks(2);
-            /// let a_chunk = a_chunks.next().unwrap();
-            /// assert_eq!(a_chunk.0, 2);
-            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[0, 1]));
-            /// let a_chunk = a_chunks.next().unwrap();
-            /// assert_eq!(a_chunk.0, 2);
-            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[2, 3]));
-            /// let a_chunk = a_chunks.next().unwrap();
-            /// assert_eq!(a_chunk.0, 1);
-            /// assert_eq!(a_chunk.1, Seq::<u8>::from_array(&[4]));
-            ///
-            /// let a = Block::from([0, 1, 2, 3, 4]);
-            /// for (l, chunk) in a.chunks(2) {
-            ///     println!("{:x?}", chunk); // prints [0, 1], [2, 3], [4]
-            /// }
-            /// ```
-            pub fn chunks<'a>(
-                &'a self,
-                chunk_size: usize,
-            ) -> impl Iterator<Item = (usize, Seq<$t>)> + 'a {
-                self.0
-                    .chunks(chunk_size)
-                    .map(|c| (c.len(), Seq::<$t>::from(c)))
-            }
+            // s.get_chunk(i: usize, block_size: usize)
+            // s.update_chunk(i: usize, block_size: usize, v: array!)
+            // s.chunks(block_size: usize)
         }
 
         impl Default for $name {
@@ -179,6 +98,7 @@ macro_rules! _array_base {
             }
         }
 
+        // TODO: use macro for these and add asserts
         impl Index<usize> for $name {
             type Output = $t;
             fn index(&self, i: usize) -> &$t {
@@ -240,6 +160,7 @@ macro_rules! _array_base {
                 $name(tmp.clone())
             }
         }
+        // TODO: use SeqSlice
         impl From<Seq<$t>> for $name {
             fn from(x: Seq<$t>) -> $name {
                 debug_assert!(x.len() <= $l);
@@ -252,6 +173,7 @@ macro_rules! _array_base {
         }
 
         impl $name {
+            // TODO: move to SeqTrait
             pub fn random() -> $name {
                 let mut tmp = [<$t>::default(); $l];
                 tmp.copy_from_slice(&$name::get_random_vec($l)[..$l]);
@@ -280,6 +202,7 @@ macro_rules! _array_base {
             }
         }
 
+        // TODO: add other operators for point-wise operations and rotating
         /// Element wise xor of two arrays
         impl std::ops::BitXor for $name {
             type Output = Self;
@@ -301,47 +224,8 @@ macro_rules! _secret_array {
     ($name:ident,$l:expr,$t:ty, $tbase:ty) => {
         _array_base!($name, $l, $t);
 
-        /// **Warning:** declassifies secret integer types.
-        impl fmt::Debug for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0[..]
-                    .iter()
-                    .map(|x| <$t>::declassify(*x))
-                    .collect::<Vec<_>>()
-                    .fmt(f)
-            }
-        }
-        /// **Warning:** declassifies secret integer types.
-        impl PartialEq for $name {
-            fn eq(&self, other: &Self) -> bool {
-                self.0[..]
-                    .iter()
-                    .map(|x| <$t>::declassify(*x))
-                    .collect::<Vec<_>>()
-                    == other.0[..]
-                        .iter()
-                        .map(|x| <$t>::declassify(*x))
-                        .collect::<Vec<_>>()
-            }
-        }
-        impl $name {
-            pub fn get_random_vec(l: usize) -> Vec<$t> {
-                (0..l)
-                    .map(|_| <$t>::classify(rand::random::<$tbase>()))
-                    .collect()
-            }
-        }
-        impl From<&[$tbase]> for $name {
-            fn from(v: &[$tbase]) -> $name {
-                debug_assert!(v.len() <= $l);
-                Self::from(
-                    v[..]
-                        .iter()
-                        .map(|x| <$t>::classify(*x))
-                        .collect::<Vec<$t>>(),
-                )
-            }
-        }
+        // TODO: add declassify
+
         /// Create an array from a regular Rust array.
         ///
         /// # Examples
@@ -370,12 +254,6 @@ macro_rules! _secret_array {
 macro_rules! _public_array {
     ($name:ident,$l:expr,$t:ty) => {
         _array_base!($name, $l, $t);
-        impl $name {
-            pub fn get_random_vec(l: usize) -> Vec<$t> {
-                (0..l).map(|_| rand::random::<$t>()).collect()
-            }
-        }
-
         impl fmt::Debug for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 self.0[..].fmt(f)
@@ -397,16 +275,13 @@ macro_rules! array {
     ($name:ident, $l:expr, U8) => {
         _secret_array!($name, $l, U8, u8);
         impl $name {
-            pub fn to_U32s_be(&self) -> [U32; $l / 4] {
+            // TODO: do we want this? If so, add a complete set.
+            pub fn to_U32s_be(&self) -> Seq<U32> {
                 let mut out = [U32::default(); $l / 4];
                 for (i, block) in self.0.chunks(4).enumerate() {
                     out[i] = u32_from_be_bytes(block.into());
                 }
-                out
-            }
-            pub fn to_hex(&self) -> String {
-                let strs: Vec<String> = self.0.iter().map(|b| format!("{:02x}", b)).collect();
-                strs.join("")
+                out.into()
             }
         }
     };
@@ -425,13 +300,14 @@ macro_rules! array {
     ($name:ident, $l:expr, u8) => {
         _public_array!($name, $l, u8);
         impl $name {
-            pub fn to_u32s_be(&self) -> [u32; $l / 4] {
+            // TODO: do we want this? If so, add a complete set.
+            pub fn to_u32s_be<T: SeqTrait>(&self) -> T {
                 let mut out = [0u32; $l / 4];
                 for (i, block) in self.0.chunks(4).enumerate() {
                     debug_assert!(block.len() == 4);
                     out[i] = u32::from_be_bytes(to_array(block));
                 }
-                out
+                out.into()
             }
             pub fn to_hex(&self) -> String {
                 let strs: Vec<String> = self.0.iter().map(|b| format!("{:02x}", b)).collect();
@@ -459,42 +335,5 @@ macro_rules! bytes {
 macro_rules! public_bytes {
     ($name:ident, $l:expr) => {
         array!($name, $l, u8);
-    };
-}
-
-#[macro_export]
-macro_rules! both_arrays {
-    ($public_name:ident, $name:ident, $l:expr, $t:ty, $tbase:ty) => {
-        _secret_array!($name, $l, $t, $tbase);
-        _public_array!($public_name, $l, $tbase);
-
-        // Conversion function between public and secret array versions.
-        impl From<$public_name> for $name {
-            fn from(v: $public_name) -> $name {
-                Self::from(
-                    v[..]
-                        .iter()
-                        .map(|x| <$t>::classify(*x))
-                        .collect::<Vec<$t>>(),
-                )
-            }
-        }
-        impl From<$name> for $public_name {
-            fn from(v: $name) -> $public_name {
-                Self::from(
-                    v[..]
-                        .iter()
-                        .map(|x| <$t>::declassify(*x))
-                        .collect::<Vec<$tbase>>(),
-                )
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! both_bytes {
-    ($public_name:ident, $name:ident, $l:expr) => {
-        both_arrays!($public_name, $name, $l, U8, u8);
     };
 }

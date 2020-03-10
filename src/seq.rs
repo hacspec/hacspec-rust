@@ -13,9 +13,8 @@ pub struct Seq<T: Copy> {
     l: usize,
 }
 
-// TODO: Why ByteSeq with secret integers? Naming is odd
 pub type ByteSeq = Seq<U8>;
-pub type MyByteSeq = Seq<u8>;
+pub type PublicByteSeq = Seq<u8>;
 
 impl<T: Copy + Default> Seq<T> {
     /// Get a new sequence of capacity `l`.
@@ -63,7 +62,7 @@ impl<T: Copy + Default> Seq<T> {
     /// assert_eq!(s, Seq::<u8>::from(&[0, 0, 3, 0, 0]));
     /// ```
     pub fn update_sub<A: SeqTrait<T>>(
-        self,
+        &self,
         start_out: usize,
         v: A,
         start_in: usize,
@@ -227,6 +226,7 @@ impl<T: Copy> From<&[T]> for Seq<T> {
 // from_int_vec!(u64);
 // from_int_vec!(u128);
 
+// TODO: add From<&str> with s.into_bytes()
 /// Read hex string to Bytes.
 impl From<&str> for Seq<U8> {
     fn from(s: &str) -> Seq<U8> {
