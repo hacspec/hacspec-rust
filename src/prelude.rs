@@ -20,3 +20,4 @@ pub use std::num::ParseIntError;
 pub use std::ops::*;
 pub use std::{cmp::min, cmp::PartialEq, fmt};
 pub use rand::Rng;
+pub use rand;

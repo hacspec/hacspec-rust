@@ -22,11 +22,7 @@
 //! **Note:** This is currently only implemented for `Seq<u128>` and `Seq<i128>`.
 //!
 
-use std::ops::{Add, Div, Mul, Sub};
-use rand::Rng;
-
-use crate::seq::*;
-use crate::integer::*;
+use crate::prelude::*;
 
 ///! First we implement all functions on slices of T.
 ///! Note that this is equivalent to ℤn[x] (or ℤ[x] depending, depending on T).

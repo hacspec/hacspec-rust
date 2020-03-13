@@ -320,6 +320,7 @@ impl<T: Copy> From<&[T]> for Seq<T> {
 //                     b: x.iter().map(|&x| T::from(x)).collect::<Vec<T>>(),
 //                     idx: 0,
 //                 }
+
 //             }
 //         }
 //     };

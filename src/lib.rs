@@ -21,7 +21,6 @@
 //! * add `cargo hacspec fstar` command
 //!
 
-use rand;
 use std::convert::AsMut;
 use std::ops::{Index, IndexMut, Range, RangeFull};
 
@@ -31,7 +30,7 @@ pub mod prelude;
 pub mod seq;
 pub mod test_vectors;
 pub mod util;
-mod integer;
+pub mod integer;
 
 use crate::prelude::*;
 
