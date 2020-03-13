@@ -525,10 +525,6 @@
 <span id="525">525</span>
 <span id="526">526</span>
 <span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
 
@@ -554,11 +550,7 @@
 <span class="doccomment">//! **Note:** This is currently only implemented for `Seq&lt;u128&gt;` and `Seq&lt;i128&gt;`.</span>
 <span class="doccomment">//!</span>
 
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::{<span class="ident">Add</span>, <span class="ident">Div</span>, <span class="ident">Mul</span>, <span class="ident">Sub</span>};
-<span class="kw">use</span> <span class="ident">rand</span>::<span class="ident">Rng</span>;
-
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">seq</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">integer</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">///! First we implement all functions on slices of T.</span>
 <span class="doccomment">///! Note that this is equivalent to ℤn[x] (or ℤ[x] depending, depending on T).</span>

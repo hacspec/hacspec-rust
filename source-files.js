@@ -1,6 +1,5 @@
 var N = null;var sourcesIndex = {};
 sourcesIndex["abstract_integers"] = {"name":"","files":["lib.rs","tests.rs"]};
-sourcesIndex["c2_chacha"] = {"name":"","files":["guts.rs","lib.rs"]};
 sourcesIndex["cfg_if"] = {"name":"","files":["lib.rs"]};
 sourcesIndex["getrandom"] = {"name":"","files":["error.rs","error_impls.rs","lib.rs","linux_android.rs","use_file.rs","util.rs","util_libc.rs"]};
 sourcesIndex["hacspec"] = {"name":"","files":["array.rs","integer.rs","lib.rs","poly.rs","prelude.rs","seq.rs","test_vectors.rs","util.rs"]};
@@ -17,7 +16,7 @@ sourcesIndex["ppv_lite86"] = {"name":"","dirs":[{"name":"x86_64","files":["mod.r
 sourcesIndex["proc_macro2"] = {"name":"","files":["fallback.rs","lib.rs","strnom.rs","wrapper.rs"]};
 sourcesIndex["quote"] = {"name":"","files":["ext.rs","format.rs","ident_fragment.rs","lib.rs","runtime.rs","spanned.rs","to_tokens.rs"]};
 sourcesIndex["rand"] = {"name":"","dirs":[{"name":"distributions","dirs":[{"name":"weighted","files":["alias_method.rs","mod.rs"]}],"files":["bernoulli.rs","binomial.rs","cauchy.rs","dirichlet.rs","exponential.rs","float.rs","gamma.rs","integer.rs","mod.rs","normal.rs","other.rs","pareto.rs","poisson.rs","triangular.rs","uniform.rs","unit_circle.rs","unit_sphere.rs","utils.rs","weibull.rs","ziggurat_tables.rs"]},{"name":"rngs","dirs":[{"name":"adapter","files":["mod.rs","read.rs","reseeding.rs"]}],"files":["entropy.rs","mock.rs","mod.rs","std.rs","thread.rs"]},{"name":"seq","files":["index.rs","mod.rs"]}],"files":["lib.rs","prelude.rs"]};
-sourcesIndex["rand_chacha"] = {"name":"","files":["chacha.rs","lib.rs"]};
+sourcesIndex["rand_chacha"] = {"name":"","files":["chacha.rs","guts.rs","lib.rs"]};
 sourcesIndex["rand_core"] = {"name":"","files":["block.rs","error.rs","impls.rs","le.rs","lib.rs","os.rs"]};
 sourcesIndex["ryu"] = {"name":"","dirs":[{"name":"buffer","files":["mod.rs"]},{"name":"pretty","files":["exponent.rs","mantissa.rs","mod.rs"]}],"files":["common.rs","d2s.rs","d2s_full_table.rs","d2s_intrinsics.rs","digit_table.rs","f2s.rs","lib.rs"]};
 sourcesIndex["secret_integers"] = {"name":"","files":["lib.rs"]};
